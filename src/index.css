@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Große Tamil-Glyphen immer mit dem gebündelten Font rendern. */
+.tamil-schrift {
+  font-family: "Noto Sans Tamil", sans-serif;
+}
