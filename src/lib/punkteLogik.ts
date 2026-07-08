@@ -109,3 +109,19 @@ export function ampelFuerFach(fach: number | undefined): Ampel {
   if (fach === 3) return "gelb";
   return "gruen";
 }
+
+// ---------------------------------------------------------------------------
+// Prüfungssimulation (Fahrschul-Prinzip)
+// ---------------------------------------------------------------------------
+
+export const PRUEFUNG = {
+  fragen: 20,
+  maxFehler: 3,
+  serieFuerReif: 5, // so viele bestandene Prüfungen in Folge = "prüfungsreif"
+} as const;
+
+// letzteBestanden: neueste Prüfung zuerst.
+export function istPruefungsreif(letzteBestanden: boolean[]): boolean {
+  if (letzteBestanden.length < PRUEFUNG.serieFuerReif) return false;
+  return letzteBestanden.slice(0, PRUEFUNG.serieFuerReif).every(Boolean);
+}

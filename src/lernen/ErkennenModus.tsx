@@ -8,7 +8,7 @@ import { leitnerSchluessel, useLernstand } from "./useLernstand";
 
 type Richtung = "tamil_zu_latein" | "latein_zu_tamil";
 
-function baueOptionen(alle: Kombination[], richtige: Kombination): Kombination[] {
+export function baueOptionen(alle: Kombination[], richtige: Kombination): Kombination[] {
   const kandidaten = alle.filter((k) => k.kombination !== richtige.kombination);
   // Bevorzugt Verwechslungskandidaten: gleicher Konsonant oder gleicher Vokal.
   const aehnlich = kandidaten.filter(

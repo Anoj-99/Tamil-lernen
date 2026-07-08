@@ -132,3 +132,14 @@ describe("Leitner", () => {
     expect(ampelFuerFach(5)).toBe("gruen");
   });
 });
+
+describe("istPruefungsreif", () => {
+  it("braucht 5 bestandene Prüfungen in Folge", async () => {
+    const { istPruefungsreif } = await import("./punkteLogik");
+    expect(istPruefungsreif([])).toBe(false);
+    expect(istPruefungsreif([true, true, true, true])).toBe(false);
+    expect(istPruefungsreif([true, true, true, true, true])).toBe(true);
+    expect(istPruefungsreif([true, true, false, true, true, true])).toBe(false);
+    expect(istPruefungsreif([true, true, true, true, true, false])).toBe(true);
+  });
+});

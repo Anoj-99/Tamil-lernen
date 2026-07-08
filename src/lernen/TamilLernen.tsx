@@ -12,22 +12,30 @@ import LehrerBereich from "./LehrerBereich";
 import LoginSeite from "./LoginSeite";
 import NachzeichnenModus from "./NachzeichnenModus";
 import PositionCheckModus from "./PositionCheckModus";
+import PruefungModus from "./PruefungModus";
 import PunkteLeiste from "./PunkteLeiste";
 import { Reihenfolge } from "./uebungsHelfer";
 import { useRegeln } from "./useRegeln";
 
-type Modus = "erkennen" | "nachzeichnen" | "position" | "fortschritt" | "lehrer";
+type Modus =
+  | "erkennen"
+  | "nachzeichnen"
+  | "position"
+  | "pruefung"
+  | "fortschritt"
+  | "lehrer";
 
 const MODI: { id: Modus; name: string }[] = [
   { id: "erkennen", name: "Erkennen" },
   { id: "nachzeichnen", name: "Nachzeichnen" },
   { id: "position", name: "Position-Check" },
+  { id: "pruefung", name: "Prüfung" },
   { id: "fortschritt", name: "Fortschritt" },
 ];
 
 const NAV_SPALTEN: Record<number, string> = {
-  4: "sm:grid-cols-4",
   5: "sm:grid-cols-5",
+  6: "sm:grid-cols-6",
 };
 
 export default function TamilLernen() {
@@ -185,6 +193,7 @@ export default function TamilLernen() {
               regeln={regeln}
             />
           )}
+          {modus === "pruefung" && <PruefungModus regeln={regeln} />}
           {modus === "fortschritt" && <FortschrittSeite />}
           {modus === "lehrer" && konto.rolle === "lehrer" && (
             <LehrerBereich
