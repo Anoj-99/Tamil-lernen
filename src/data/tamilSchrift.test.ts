@@ -71,9 +71,9 @@ describe("tamilSchrift-Daten", () => {
     ]);
   });
 
-  it("hat für ற் den அ-Präfix-Hinweis", () => {
+  it("hat für ற் den இ-Präfix-Hinweis", () => {
     const ra = konsonanten.find((k) => k.grundform === "ற்")!;
-    expect(ra.positionHinweis).toContain("அ");
+    expect(ra.positionHinweis).toContain("இ");
   });
 
   it("hat Strichfolgen für alle Vokale und Konsonanten", () => {

@@ -110,7 +110,7 @@ export const konsonanten: Konsonant[] = [
     lautDeutsch: "r / tr / dr (stark gerollt)",
     position: "nur_mitte",
     positionHinweis:
-      "Falls ற் am Wortanfang stehen soll, wird ein zusätzliches அ davorgesetzt.",
+      "Falls ற் am Wortanfang stehen soll, wird ein zusätzliches இ davorgesetzt.",
   },
   {
     zeichen: "ங",
