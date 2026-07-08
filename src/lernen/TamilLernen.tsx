@@ -8,6 +8,7 @@ import { istLokalerModus } from "../lib/datenquelle";
 import ErkennenModus from "./ErkennenModus";
 import FortschrittSeite from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
+import LehrerBereich from "./LehrerBereich";
 import LoginSeite from "./LoginSeite";
 import NachzeichnenModus from "./NachzeichnenModus";
 import PositionCheckModus from "./PositionCheckModus";
@@ -15,7 +16,7 @@ import PunkteLeiste from "./PunkteLeiste";
 import { Reihenfolge } from "./uebungsHelfer";
 import { useRegeln } from "./useRegeln";
 
-type Modus = "erkennen" | "nachzeichnen" | "position" | "fortschritt";
+type Modus = "erkennen" | "nachzeichnen" | "position" | "fortschritt" | "lehrer";
 
 const MODI: { id: Modus; name: string }[] = [
   { id: "erkennen", name: "Erkennen" },
@@ -24,9 +25,14 @@ const MODI: { id: Modus; name: string }[] = [
   { id: "fortschritt", name: "Fortschritt" },
 ];
 
+const NAV_SPALTEN: Record<number, string> = {
+  4: "sm:grid-cols-4",
+  5: "sm:grid-cols-5",
+};
+
 export default function TamilLernen() {
   const { konto, punkte, laden, logout } = useKonto();
-  const { regeln } = useRegeln();
+  const { regeln, aktualisiere, zuruecksetzen } = useRegeln();
   const [modus, setModus] = useState<Modus>("erkennen");
   const [gruppenId, setGruppenId] = useState<GruppenId>("vallinam_alle");
   const [reihenfolge, setReihenfolge] = useState<Reihenfolge>("zufaellig");
@@ -34,6 +40,14 @@ export default function TamilLernen() {
   const gruppe = useMemo(
     () => uebungsgruppen.find((g) => g.id === gruppenId) ?? uebungsgruppen[0],
     [gruppenId],
+  );
+
+  const sichtbareModi = useMemo(
+    () =>
+      konto?.rolle === "lehrer"
+        ? [...MODI, { id: "lehrer" as Modus, name: "Lehrer" }]
+        : MODI,
+    [konto],
   );
 
   if (laden) {
@@ -79,8 +93,11 @@ export default function TamilLernen() {
 
         <PunkteLeiste punkte={punkte} />
 
-        <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Übungsmodus">
-          {MODI.map((m) => (
+        <nav
+          className={`grid grid-cols-2 gap-2 ${NAV_SPALTEN[sichtbareModi.length] ?? "sm:grid-cols-4"}`}
+          aria-label="Übungsmodus"
+        >
+          {sichtbareModi.map((m) => (
             <button
               key={m.id}
               type="button"
@@ -149,6 +166,7 @@ export default function TamilLernen() {
           {modus === "erkennen" && (
             <ErkennenModus
               key={gruppe.id}
+              gruppenId={gruppe.id}
               kombinationen={gruppe.kombinationen}
               reihenfolge={reihenfolge}
             />
@@ -168,6 +186,13 @@ export default function TamilLernen() {
             />
           )}
           {modus === "fortschritt" && <FortschrittSeite />}
+          {modus === "lehrer" && konto.rolle === "lehrer" && (
+            <LehrerBereich
+              regeln={regeln}
+              aktualisiere={aktualisiere}
+              zuruecksetzen={zuruecksetzen}
+            />
+          )}
         </main>
 
         <footer className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">

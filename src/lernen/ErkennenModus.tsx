@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Kombination } from "../data/tamilSchrift";
+import { GruppenId, Kombination } from "../data/tamilSchrift";
 import { EP_WERTE, gewichtFuerFach } from "../lib/punkteLogik";
 import { useKonto } from "./KontoContext";
 import { mische, Reihenfolge, useGewichteteFolge } from "./uebungsHelfer";
+import { useHausaufgaben } from "./useHausaufgaben";
 import { leitnerSchluessel, useLernstand } from "./useLernstand";
 
 type Richtung = "tamil_zu_latein" | "latein_zu_tamil";
@@ -32,13 +33,15 @@ function baueOptionen(alle: Kombination[], richtige: Kombination): Kombination[]
 }
 
 interface Props {
+  gruppenId: GruppenId;
   kombinationen: Kombination[];
   reihenfolge: Reihenfolge;
 }
 
-export default function ErkennenModus({ kombinationen, reihenfolge }: Props) {
+export default function ErkennenModus({ gruppenId, kombinationen, reihenfolge }: Props) {
   const { konto, belohne } = useKonto();
   const { leitner, verbucheAntwort, logFehler } = useLernstand(konto?.username ?? "");
+  const { zaehleUebung } = useHausaufgaben(konto?.username ?? "");
   const { aktuell, weiter } = useGewichteteFolge(kombinationen, reihenfolge, (k) =>
     gewichtFuerFach(leitner.get(leitnerSchluessel("erkennen", k.kombination))?.fach),
   );
@@ -65,6 +68,7 @@ export default function ErkennenModus({ kombinationen, reihenfolge }: Props) {
       gesamt: p.gesamt + 1,
     }));
     verbucheAntwort("erkennen", aktuell.kombination, richtig);
+    zaehleUebung(gruppenId);
     if (richtig) {
       belohne(EP_WERTE.erkennenRichtig);
     } else {
