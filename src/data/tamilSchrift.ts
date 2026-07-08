@@ -4,11 +4,10 @@
 
 export type KonsonantTyp = "vallinam" | "mellinam";
 
-export type PositionsWert =
-  | "anfang_mitte_ende"
-  | "nur_mitte_ende"
-  | "nie_am_anfang_mit_ausnahme"
-  | "selten";
+// Positionswerte laut Lehr-PDF: Die Grundform mit Pulli steht nie am
+// Wortanfang. "anfang_mitte_ende" bleibt als waehlbarer Wert fuer
+// Lehrer-Anpassungen erhalten.
+export type PositionsWert = "nur_mitte" | "mitte_und_ende" | "anfang_mitte_ende";
 
 export type WortPosition = "anfang" | "mitte" | "ende";
 
@@ -64,7 +63,7 @@ export const konsonanten: Konsonant[] = [
     typ: "vallinam",
     latein: "k",
     lautDeutsch: "k / g / h",
-    position: "anfang_mitte_ende",
+    position: "nur_mitte",
     positionHinweis: null,
   },
   {
@@ -73,7 +72,7 @@ export const konsonanten: Konsonant[] = [
     typ: "vallinam",
     latein: "tsch",
     lautDeutsch: "tsch (teils s)",
-    position: "anfang_mitte_ende",
+    position: "nur_mitte",
     positionHinweis: null,
   },
   {
@@ -82,7 +81,7 @@ export const konsonanten: Konsonant[] = [
     typ: "vallinam",
     latein: "d",
     lautDeutsch: "d / t (Zunge zurückgerollt)",
-    position: "nur_mitte_ende",
+    position: "nur_mitte",
     positionHinweis: null,
   },
   {
@@ -91,7 +90,7 @@ export const konsonanten: Konsonant[] = [
     typ: "vallinam",
     latein: "th",
     lautDeutsch: "th (Zunge an den Zähnen)",
-    position: "anfang_mitte_ende",
+    position: "nur_mitte",
     positionHinweis: null,
   },
   {
@@ -100,7 +99,7 @@ export const konsonanten: Konsonant[] = [
     typ: "vallinam",
     latein: "p",
     lautDeutsch: "p / b",
-    position: "anfang_mitte_ende",
+    position: "nur_mitte",
     positionHinweis: null,
   },
   {
@@ -109,7 +108,7 @@ export const konsonanten: Konsonant[] = [
     typ: "vallinam",
     latein: "r",
     lautDeutsch: "r / tr / dr (stark gerollt)",
-    position: "nie_am_anfang_mit_ausnahme",
+    position: "nur_mitte",
     positionHinweis:
       "Falls ற் am Wortanfang stehen soll, wird ein zusätzliches அ davorgesetzt.",
   },
@@ -119,9 +118,9 @@ export const konsonanten: Konsonant[] = [
     typ: "mellinam",
     latein: "ng",
     lautDeutsch: "ng (wie in „singen“)",
-    position: "selten",
+    position: "nur_mitte",
     positionHinweis:
-      "ங் kommt in echten Wörtern so gut wie nie am Wortanfang vor.",
+      "Kombinationen mit ங kommen in echten Wörtern kaum vor.",
   },
   {
     zeichen: "ஞ",
@@ -129,9 +128,9 @@ export const konsonanten: Konsonant[] = [
     typ: "mellinam",
     latein: "nj",
     lautDeutsch: "nj (wie in „Kognak“)",
-    position: "selten",
+    position: "nur_mitte",
     positionHinweis:
-      "ஞ் kommt in echten Wörtern nur sehr selten am Wortanfang vor.",
+      "Als volle Silbe steht ஞ nur am Wortanfang (z. B. ஞாயிறு = Sonntag) – die Grundform ஞ் dagegen nur in der Wortmitte.",
   },
   {
     zeichen: "ண",
@@ -139,7 +138,7 @@ export const konsonanten: Konsonant[] = [
     typ: "mellinam",
     latein: "N",
     lautDeutsch: "N (Zunge zurückgerollt)",
-    position: "nur_mitte_ende",
+    position: "mitte_und_ende",
     positionHinweis: null,
   },
   {
@@ -148,9 +147,9 @@ export const konsonanten: Konsonant[] = [
     typ: "mellinam",
     latein: "n",
     lautDeutsch: "n (Zunge hinter den Zähnen)",
-    position: "anfang_mitte_ende",
+    position: "nur_mitte",
     positionHinweis:
-      "ந் ist der einzige der drei N-Laute, der am Wortanfang stehen darf.",
+      "Als volle Silbe (ந, நா, நி …) ist ந das einzige N, das am Wortanfang stehen darf – die Grundform ந் steht nur in der Mitte.",
   },
   {
     zeichen: "ம",
@@ -158,7 +157,7 @@ export const konsonanten: Konsonant[] = [
     typ: "mellinam",
     latein: "m",
     lautDeutsch: "m",
-    position: "anfang_mitte_ende",
+    position: "mitte_und_ende",
     positionHinweis: null,
   },
   {
@@ -167,7 +166,7 @@ export const konsonanten: Konsonant[] = [
     typ: "mellinam",
     latein: "ṉ",
     lautDeutsch: "n (Zunge in der Mitte)",
-    position: "nur_mitte_ende",
+    position: "mitte_und_ende",
     positionHinweis: null,
   },
 ];
@@ -240,21 +239,31 @@ export const uebungsgruppen: Uebungsgruppe[] = [
 // ---------------------------------------------------------------------------
 
 export function erlaubtePositionen(position: PositionsWert): WortPosition[] {
-  return position === "anfang_mitte_ende"
-    ? ["anfang", "mitte", "ende"]
-    : ["mitte", "ende"];
+  switch (position) {
+    case "nur_mitte":
+      return ["mitte"];
+    case "mitte_und_ende":
+      return ["mitte", "ende"];
+    case "anfang_mitte_ende":
+      return ["anfang", "mitte", "ende"];
+  }
 }
 
-export function positionsErklaerung(k: Konsonant): string {
-  switch (k.position) {
+// Anzeigenamen fuer die Lehrer-Ansicht.
+export const positionsWertNamen: Record<PositionsWert, string> = {
+  nur_mitte: "Nur Mitte",
+  mitte_und_ende: "Mitte und Ende",
+  anfang_mitte_ende: "Anfang, Mitte und Ende",
+};
+
+export function positionsErklaerung(grundform: string, wert: PositionsWert): string {
+  switch (wert) {
+    case "nur_mitte":
+      return `${grundform} darf nur in der Mitte eines Wortes stehen – nicht am Anfang und nicht am Ende.`;
+    case "mitte_und_ende":
+      return `${grundform} darf nur in der Mitte oder am Ende stehen, niemals am Anfang.`;
     case "anfang_mitte_ende":
-      return `${k.grundform} darf am Anfang, in der Mitte und am Ende eines Wortes stehen.`;
-    case "nur_mitte_ende":
-      return `${k.grundform} darf nur in der Mitte oder am Ende stehen, niemals am Anfang.`;
-    case "nie_am_anfang_mit_ausnahme":
-      return `${k.grundform} darf nur in der Mitte oder am Ende stehen, nicht direkt am Anfang.`;
-    case "selten":
-      return `${k.grundform} steht in echten Wörtern so gut wie nie am Wortanfang – übe daher: nur Mitte und Ende.`;
+      return `${grundform} darf am Anfang, in der Mitte und am Ende eines Wortes stehen.`;
   }
 }
 

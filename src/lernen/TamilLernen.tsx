@@ -11,6 +11,7 @@ import LoginSeite from "./LoginSeite";
 import NachzeichnenModus from "./NachzeichnenModus";
 import PositionCheckModus from "./PositionCheckModus";
 import { Reihenfolge } from "./uebungsHelfer";
+import { useRegeln } from "./useRegeln";
 
 type Modus = "erkennen" | "nachzeichnen" | "position";
 
@@ -22,6 +23,7 @@ const MODI: { id: Modus; name: string }[] = [
 
 export default function TamilLernen() {
   const { konto, laden, logout } = useKonto();
+  const { regeln } = useRegeln();
   const [modus, setModus] = useState<Modus>("erkennen");
   const [gruppenId, setGruppenId] = useState<GruppenId>("vallinam_alle");
   const [reihenfolge, setReihenfolge] = useState<Reihenfolge>("zufaellig");
@@ -157,6 +159,7 @@ export default function TamilLernen() {
             <PositionCheckModus
               initialTyp={gruppenId === "vallinam_alle" ? "vallinam" : "mellinam"}
               reihenfolge={reihenfolge}
+              regeln={regeln}
             />
           )}
         </main>

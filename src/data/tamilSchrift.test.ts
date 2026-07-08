@@ -50,32 +50,25 @@ describe("tamilSchrift-Daten", () => {
     }
   });
 
-  it("weist die Positionsregeln laut Vorgabe zu", () => {
+  it("weist die Positionsregeln laut Lehr-PDF zu", () => {
     const positionVon = (grundform: string) =>
       konsonanten.find((k) => k.grundform === grundform)?.position;
-    for (const g of ["க்", "ச்", "த்", "ப்", "ம்", "ந்"]) {
-      expect(positionVon(g)).toBe("anfang_mitte_ende");
+    for (const g of ["க்", "ச்", "ட்", "த்", "ப்", "ற்", "ங்", "ஞ்", "ந்"]) {
+      expect(positionVon(g)).toBe("nur_mitte");
     }
-    for (const g of ["ட்", "ண்", "ன்"]) {
-      expect(positionVon(g)).toBe("nur_mitte_ende");
+    for (const g of ["ண்", "ம்", "ன்"]) {
+      expect(positionVon(g)).toBe("mitte_und_ende");
     }
-    expect(positionVon("ற்")).toBe("nie_am_anfang_mit_ausnahme");
-    expect(positionVon("ங்")).toBe("selten");
-    expect(positionVon("ஞ்")).toBe("selten");
   });
 
-  it("erlaubt Anfang nur bei anfang_mitte_ende", () => {
+  it("liefert die erlaubten Positionen je Wert", () => {
+    expect(erlaubtePositionen("nur_mitte")).toEqual(["mitte"]);
+    expect(erlaubtePositionen("mitte_und_ende")).toEqual(["mitte", "ende"]);
     expect(erlaubtePositionen("anfang_mitte_ende")).toEqual([
       "anfang",
       "mitte",
       "ende",
     ]);
-    expect(erlaubtePositionen("nur_mitte_ende")).toEqual(["mitte", "ende"]);
-    expect(erlaubtePositionen("nie_am_anfang_mit_ausnahme")).toEqual([
-      "mitte",
-      "ende",
-    ]);
-    expect(erlaubtePositionen("selten")).toEqual(["mitte", "ende"]);
   });
 
   it("hat für ற் den அ-Präfix-Hinweis", () => {

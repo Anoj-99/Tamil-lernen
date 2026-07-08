@@ -6,6 +6,7 @@ import {
   positionsErklaerung,
   WortPosition,
 } from "../data/tamilSchrift";
+import { RegelEintrag } from "../lib/typen";
 import { Reihenfolge, useUebungsfolge } from "./uebungsHelfer";
 
 const POSITIONEN: { wert: WortPosition; name: string }[] = [
@@ -17,9 +18,10 @@ const POSITIONEN: { wert: WortPosition; name: string }[] = [
 interface Props {
   initialTyp: KonsonantTyp;
   reihenfolge: Reihenfolge;
+  regeln: Map<string, RegelEintrag>;
 }
 
-export default function PositionCheckModus({ initialTyp, reihenfolge }: Props) {
+export default function PositionCheckModus({ initialTyp, reihenfolge, regeln }: Props) {
   const [typ, setTyp] = useState<KonsonantTyp>(initialTyp);
   const auswahlPool = useMemo(
     () => konsonanten.filter((k) => k.typ === typ),
@@ -32,7 +34,11 @@ export default function PositionCheckModus({ initialTyp, reihenfolge }: Props) {
 
   if (!aktuell) return null;
 
-  const richtige = erlaubtePositionen(aktuell.position);
+  // Effektive Regel: Lehrer-Anpassung aus der Datenbank, sonst Standard.
+  const regel = regeln.get(aktuell.grundform);
+  const positionWert = regel?.positionWert ?? aktuell.position;
+  const positionHinweis = regel ? regel.positionHinweis : aktuell.positionHinweis;
+  const richtige = erlaubtePositionen(positionWert);
   const warRichtig =
     geprueft &&
     richtige.length === gewaehlt.size &&
@@ -154,11 +160,9 @@ export default function PositionCheckModus({ initialTyp, reihenfolge }: Props) {
             <p className="font-semibold">
               {warRichtig ? "Richtig!" : "Leider falsch."}
             </p>
-            <p className="mt-1">{positionsErklaerung(aktuell)}</p>
-            {aktuell.positionHinweis && (
-              <p className="mt-1 font-medium">
-                Hinweis: {aktuell.positionHinweis}
-              </p>
+            <p className="mt-1">{positionsErklaerung(aktuell.grundform, positionWert)}</p>
+            {positionHinweis && (
+              <p className="mt-1 font-medium">Hinweis: {positionHinweis}</p>
             )}
           </div>
           <button
