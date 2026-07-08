@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   GruppenId,
   lateinLegende,
@@ -57,6 +57,14 @@ export default function TamilLernen() {
         : MODI,
     [konto],
   );
+
+  // Nach einem Benutzerwechsel nicht in einem Tab hängen bleiben, den es
+  // für die neue Rolle gar nicht gibt (z.B. "Lehrer" nach Schüler-Login).
+  useEffect(() => {
+    if (konto && !sichtbareModi.some((m) => m.id === modus)) {
+      setModus("erkennen");
+    }
+  }, [konto, sichtbareModi, modus]);
 
   if (laden) {
     return (

@@ -225,7 +225,7 @@ function SchuelerListe({ schueler }: { schueler: SchuelerUebersicht[] }) {
                       <ul className="divide-y divide-slate-100 text-sm">
                         {detail.fehler.map((f, i) => (
                           <li key={f.id ?? i} className="flex items-center gap-2 py-1.5">
-                            <span className="tamil-schrift w-10 text-xl">{f.zeichen}</span>
+                            <span className="tamil-schrift min-w-10 shrink-0 text-xl">{f.zeichen}</span>
                             <span className="flex-1 text-slate-600">
                               <span className="text-red-700">{f.gegebeneAntwort}</span>
                               {" → "}

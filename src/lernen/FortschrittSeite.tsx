@@ -157,7 +157,7 @@ export default function FortschrittSeite() {
           <ul className="divide-y divide-slate-100">
             {fehler.map((f, i) => (
               <li key={f.id ?? i} className="flex items-center gap-3 py-2 text-sm">
-                <span className="tamil-schrift w-12 text-2xl">{f.zeichen}</span>
+                <span className="tamil-schrift min-w-12 shrink-0 text-2xl">{f.zeichen}</span>
                 <span className="flex-1 text-slate-600">
                   <span className="text-red-700">{f.gegebeneAntwort}</span>
                   {" → richtig: "}
