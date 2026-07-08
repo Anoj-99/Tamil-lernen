@@ -6,8 +6,11 @@ import {
   positionsErklaerung,
   WortPosition,
 } from "../data/tamilSchrift";
+import { EP_WERTE } from "../lib/punkteLogik";
 import { RegelEintrag } from "../lib/typen";
+import { useKonto } from "./KontoContext";
 import { Reihenfolge, useUebungsfolge } from "./uebungsHelfer";
+import { useLernstand } from "./useLernstand";
 
 const POSITIONEN: { wert: WortPosition; name: string }[] = [
   { wert: "anfang", name: "Anfang" },
@@ -22,6 +25,8 @@ interface Props {
 }
 
 export default function PositionCheckModus({ initialTyp, reihenfolge, regeln }: Props) {
+  const { konto, belohne } = useKonto();
+  const { verbucheAntwort, logFehler } = useLernstand(konto?.username ?? "");
   const [typ, setTyp] = useState<KonsonantTyp>(initialTyp);
   const auswahlPool = useMemo(
     () => konsonanten.filter((k) => k.typ === typ),
@@ -63,6 +68,21 @@ export default function PositionCheckModus({ initialTyp, reihenfolge, regeln }: 
       gesamt: alt.gesamt + 1,
     }));
     setGeprueft(true);
+    verbucheAntwort("position", aktuell.grundform, korrekt);
+    if (korrekt) {
+      belohne(EP_WERTE.positionRichtig);
+    } else {
+      const namen = (liste: WortPosition[]) =>
+        POSITIONEN.filter((p) => liste.includes(p.wert))
+          .map((p) => p.name)
+          .join(", ");
+      logFehler(
+        "position",
+        aktuell.grundform,
+        namen(richtige),
+        namen([...gewaehlt]),
+      );
+    }
   };
 
   const naechster = () => {
@@ -158,7 +178,9 @@ export default function PositionCheckModus({ initialTyp, reihenfolge, regeln }: 
             aria-live="polite"
           >
             <p className="font-semibold">
-              {warRichtig ? "Richtig!" : "Leider falsch."}
+              {warRichtig
+                ? `Richtig! +${EP_WERTE.positionRichtig} EP`
+                : "Leider falsch."}
             </p>
             <p className="mt-1">{positionsErklaerung(aktuell.grundform, positionWert)}</p>
             {positionHinweis && (

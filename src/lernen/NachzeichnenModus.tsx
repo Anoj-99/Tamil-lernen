@@ -6,6 +6,8 @@ import {
   strichfolgenVokalzeichen,
   umschliessendeVokale,
 } from "../data/tamilSchrift";
+import { EP_WERTE } from "../lib/punkteLogik";
+import { useKonto } from "./KontoContext";
 import { Reihenfolge, useUebungsfolge } from "./uebungsHelfer";
 import { getVokalzeichen, TAMIL_FONT, zeichneVorlage } from "./vorlage";
 
@@ -20,6 +22,7 @@ interface Props {
 }
 
 export default function NachzeichnenModus({ kombinationen, reihenfolge }: Props) {
+  const { belohne } = useKonto();
   const { aktuell, weiter } = useUebungsfolge(kombinationen, reihenfolge);
   const rahmenRef = useRef<HTMLDivElement>(null);
   const vorlageRef = useRef<HTMLCanvasElement>(null);
@@ -132,6 +135,8 @@ export default function NachzeichnenModus({ kombinationen, reihenfolge }: Props)
   };
 
   const naechsterBuchstabe = () => {
+    // Nur belohnen, wenn tatsächlich etwas gezeichnet wurde.
+    if (striche.length > 0) belohne(EP_WERTE.nachzeichnenFertig);
     loeschen();
     weiter();
   };

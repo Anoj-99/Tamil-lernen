@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { Kombination } from "../data/tamilSchrift";
-import { mische, Reihenfolge, useUebungsfolge } from "./uebungsHelfer";
+import { EP_WERTE, gewichtFuerFach } from "../lib/punkteLogik";
+import { useKonto } from "./KontoContext";
+import { mische, Reihenfolge, useGewichteteFolge } from "./uebungsHelfer";
+import { leitnerSchluessel, useLernstand } from "./useLernstand";
 
 type Richtung = "tamil_zu_latein" | "latein_zu_tamil";
 
@@ -34,7 +37,11 @@ interface Props {
 }
 
 export default function ErkennenModus({ kombinationen, reihenfolge }: Props) {
-  const { aktuell, weiter } = useUebungsfolge(kombinationen, reihenfolge);
+  const { konto, belohne } = useKonto();
+  const { leitner, verbucheAntwort, logFehler } = useLernstand(konto?.username ?? "");
+  const { aktuell, weiter } = useGewichteteFolge(kombinationen, reihenfolge, (k) =>
+    gewichtFuerFach(leitner.get(leitnerSchluessel("erkennen", k.kombination))?.fach),
+  );
   const [richtung, setRichtung] = useState<Richtung>("tamil_zu_latein");
   const [gewaehlt, setGewaehlt] = useState<Kombination | null>(null);
   const [punkte, setPunkte] = useState({ richtig: 0, gesamt: 0 });
@@ -51,11 +58,23 @@ export default function ErkennenModus({ kombinationen, reihenfolge }: Props) {
 
   const antworten = (option: Kombination) => {
     if (beantwortet) return;
+    const richtig = option.kombination === aktuell.kombination;
     setGewaehlt(option);
     setPunkte((p) => ({
-      richtig: p.richtig + (option.kombination === aktuell.kombination ? 1 : 0),
+      richtig: p.richtig + (richtig ? 1 : 0),
       gesamt: p.gesamt + 1,
     }));
+    verbucheAntwort("erkennen", aktuell.kombination, richtig);
+    if (richtig) {
+      belohne(EP_WERTE.erkennenRichtig);
+    } else {
+      logFehler(
+        "erkennen",
+        aktuell.kombination,
+        richtung === "tamil_zu_latein" ? aktuell.ausspracheLatein : aktuell.kombination,
+        richtung === "tamil_zu_latein" ? option.ausspracheLatein : option.kombination,
+      );
+    }
   };
 
   const naechsteFrage = () => {
@@ -147,7 +166,9 @@ export default function ErkennenModus({ kombinationen, reihenfolge }: Props) {
         <p className="text-sm text-slate-600" aria-live="polite">
           {beantwortet &&
             (warRichtig ? (
-              <span className="font-semibold text-green-700">Richtig!</span>
+              <span className="font-semibold text-green-700">
+                Richtig! +{EP_WERTE.erkennenRichtig} EP
+              </span>
             ) : (
               <span className="font-semibold text-red-700">
                 Leider falsch.{" "}

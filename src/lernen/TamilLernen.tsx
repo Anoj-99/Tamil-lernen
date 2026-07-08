@@ -6,23 +6,26 @@ import {
 } from "../data/tamilSchrift";
 import { istLokalerModus } from "../lib/datenquelle";
 import ErkennenModus from "./ErkennenModus";
+import FortschrittSeite from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
 import LoginSeite from "./LoginSeite";
 import NachzeichnenModus from "./NachzeichnenModus";
 import PositionCheckModus from "./PositionCheckModus";
+import PunkteLeiste from "./PunkteLeiste";
 import { Reihenfolge } from "./uebungsHelfer";
 import { useRegeln } from "./useRegeln";
 
-type Modus = "erkennen" | "nachzeichnen" | "position";
+type Modus = "erkennen" | "nachzeichnen" | "position" | "fortschritt";
 
 const MODI: { id: Modus; name: string }[] = [
   { id: "erkennen", name: "Erkennen" },
   { id: "nachzeichnen", name: "Nachzeichnen" },
   { id: "position", name: "Position-Check" },
+  { id: "fortschritt", name: "Fortschritt" },
 ];
 
 export default function TamilLernen() {
-  const { konto, laden, logout } = useKonto();
+  const { konto, punkte, laden, logout } = useKonto();
   const { regeln } = useRegeln();
   const [modus, setModus] = useState<Modus>("erkennen");
   const [gruppenId, setGruppenId] = useState<GruppenId>("vallinam_alle");
@@ -74,7 +77,9 @@ export default function TamilLernen() {
           )}
         </header>
 
-        <nav className="grid grid-cols-3 gap-2" aria-label="Übungsmodus">
+        <PunkteLeiste punkte={punkte} />
+
+        <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Übungsmodus">
           {MODI.map((m) => (
             <button
               key={m.id}
@@ -91,7 +96,7 @@ export default function TamilLernen() {
           ))}
         </nav>
 
-        {modus !== "position" && (
+        {(modus === "erkennen" || modus === "nachzeichnen") && (
           <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4">
             <div>
               <label
@@ -162,6 +167,7 @@ export default function TamilLernen() {
               regeln={regeln}
             />
           )}
+          {modus === "fortschritt" && <FortschrittSeite />}
         </main>
 
         <footer className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
