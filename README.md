@@ -1,13 +1,40 @@
 # Tamil-Schrift üben
 
 Eigenständige Lern-App für Tamil-Konsonant-Vokal-Kombinationen
-(deutschsprachige UI). Drei Übungsmodi: **Erkennen** (Multiple Choice),
-**Nachzeichnen** (Canvas mit Strichfolge-Pfeilen) und **Position-Check**
-(erlaubte Wortpositionen). Kein Login, kein Backend, kein Speichern –
-alles läuft im Frontend-State.
+(deutschsprachige UI), aufgebaut wie eine Fahrschul-Theorie-App:
+Übungsmodi **Erkennen**, **Nachzeichnen**, **Position-Check** und
+**Prüfungssimulation**, dazu Punkte/Level/Streak, Fehlerverlauf,
+Leitner-Wiederholung und ein Lehrer-Dashboard.
 
 Die App ist bewusst unabhängig von der TamilConnect-App: eigenes
-`package.json`, eigener Build, keine gemeinsamen Abhängigkeiten.
+`package.json`, eigener Build, eigene (separate) Supabase-Datenbank.
+
+## Konten & Rollen
+
+- Login nur mit Benutzername – kein Passwort, keine E-Mail. Ein neuer
+  Name legt automatisch ein neues Schüler-Konto an.
+- Rolle `lehrer` wird direkt in Supabase vergeben (Table Editor →
+  `accounts` → Spalte `rolle`, oder per SQL:
+  `update accounts set rolle = 'lehrer' where username = 'NAME';`).
+- Ohne konfigurierte Datenbank läuft die App im **Test-Modus**: alles
+  wird nur im Browser (localStorage) gespeichert. Dort bekommt der
+  Benutzername `lehrer` automatisch Lehrer-Rechte zum Ausprobieren.
+
+## Supabase einrichten (einmalig)
+
+1. Auf [supabase.com](https://supabase.com) ein **neues Projekt**
+   anlegen (getrennt von TamilConnect).
+2. Im SQL-Editor den Inhalt von `supabase/schema.sql` ausführen.
+3. Unter *Project Settings → API* die Werte **Project URL** und
+   **anon/publishable key** kopieren.
+4. Im Vercel-Projekt `tamil-lernen` unter *Settings → Environment
+   Variables* eintragen und neu deployen:
+   - `VITE_SUPABASE_URL` = Project URL
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` = anon/publishable key
+
+Hinweis: Die App arbeitet bewusst ohne Passwörter; die Tabellen sind
+für den anon-Key offen. Es liegen dort nur Benutzernamen, Punkte und
+Übungsstatistiken – keine schützenswerten Daten.
 
 ## Lokal starten
 

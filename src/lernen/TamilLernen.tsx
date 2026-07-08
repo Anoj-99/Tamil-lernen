@@ -4,7 +4,10 @@ import {
   lateinLegende,
   uebungsgruppen,
 } from "../data/tamilSchrift";
+import { istLokalerModus } from "../lib/datenquelle";
 import ErkennenModus from "./ErkennenModus";
+import { useKonto } from "./KontoContext";
+import LoginSeite from "./LoginSeite";
 import NachzeichnenModus from "./NachzeichnenModus";
 import PositionCheckModus from "./PositionCheckModus";
 import { Reihenfolge } from "./uebungsHelfer";
@@ -18,6 +21,7 @@ const MODI: { id: Modus; name: string }[] = [
 ];
 
 export default function TamilLernen() {
+  const { konto, laden, logout } = useKonto();
   const [modus, setModus] = useState<Modus>("erkennen");
   const [gruppenId, setGruppenId] = useState<GruppenId>("vallinam_alle");
   const [reihenfolge, setReihenfolge] = useState<Reihenfolge>("zufaellig");
@@ -27,14 +31,45 @@ export default function TamilLernen() {
     [gruppenId],
   );
 
+  if (laden) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-slate-100 text-slate-500">
+        Lade …
+      </div>
+    );
+  }
+  if (!konto) {
+    return <LoginSeite />;
+  }
+
   return (
     <div className="min-h-dvh bg-slate-100 text-slate-900">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
         <header className="text-center">
           <h1 className="text-2xl font-bold">Tamil-Schrift üben</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Konsonant-Vokal-Kombinationen · Fortschritt wird nicht gespeichert
-          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm">
+            <span className="rounded-full border border-slate-300 bg-white px-3 py-1 font-medium">
+              {konto.username}
+            </span>
+            {konto.rolle === "lehrer" && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
+                Lehrer
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-full border border-slate-300 bg-white px-3 py-1 text-slate-500 hover:text-slate-900"
+            >
+              Abmelden
+            </button>
+          </div>
+          {istLokalerModus && (
+            <p className="mt-2 text-xs text-amber-700">
+              Test-Modus: keine Datenbank verbunden – Fortschritt bleibt nur
+              auf diesem Gerät.
+            </p>
+          )}
         </header>
 
         <nav className="grid grid-cols-3 gap-2" aria-label="Übungsmodus">
