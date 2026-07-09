@@ -44,3 +44,16 @@ export function baueLektionOptionen<T>(
   const uebrige = mische(alle.filter((t) => schluessel(t) !== schluessel(richtige)));
   return mische([richtige, ...uebrige.slice(0, 3)]);
 }
+
+// Mischt eine Liste so, dass (wenn möglich) kein Element auf seiner
+// ursprünglichen Position bleibt - für Teil 5 "Verbinden", damit die rechte
+// Spalte nie auf gleicher Höhe wie ihr passendes Element in der linken steht.
+export function mischeOhneGleicheReihe<T>(elemente: T[]): T[] {
+  if (elemente.length < 2) return [...elemente];
+  for (let versuch = 0; versuch < 20; versuch++) {
+    const kandidat = mische(elemente);
+    if (kandidat.every((e, i) => e !== elemente[i])) return kandidat;
+  }
+  // Fallback, der immer eine Verschiebung garantiert: zyklische Rotation.
+  return [...elemente.slice(1), elemente[0]];
+}

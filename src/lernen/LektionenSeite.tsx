@@ -3,6 +3,7 @@ import { buchstabenDerStufe, lektionen, lektionById, stufen } from "../data/lekt
 import { useKonto } from "./KontoContext";
 import TeilErkennen from "./TeilErkennen";
 import TeilNachzeichnen from "./TeilNachzeichnen";
+import TeilVerbinden from "./TeilVerbinden";
 import TeilVorstellung from "./TeilVorstellung";
 import { useLektionFortschritt } from "./useLektionFortschritt";
 import { useLektionInhalt } from "./useLektionInhalt";
@@ -150,6 +151,12 @@ export default function LektionenSeite() {
               key={`${lektionId}-4`}
               buchstaben={buchstaben}
               weiter={() => teilAbschliessen(4)}
+            />
+          ) : aktuellerTeil === 5 ? (
+            <TeilVerbinden
+              key={`${lektionId}-5`}
+              paare={lektion?.verbindenPaare ?? []}
+              weiter={() => teilAbschliessen(5)}
             />
           ) : (
             <TeilPlatzhalter
