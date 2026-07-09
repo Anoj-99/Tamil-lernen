@@ -15,11 +15,16 @@ import {
   Konto,
   leererPunkteStand,
   LeitnerEintrag,
+  LektionFortschritt,
+  LektionInhaltUeberschreibung,
   PruefungsErgebnis,
   PunkteStand,
   RegelEintrag,
   Rolle,
   SchuelerUebersicht,
+  standardCheckpointKonfig,
+  StufenCheckpointErgebnis,
+  StufenCheckpointKonfig,
 } from "./typen";
 
 export interface Datenquelle {
@@ -47,6 +52,19 @@ export interface Datenquelle {
 
   pruefungSpeichern(ergebnis: PruefungsErgebnis): Promise<void>;
   ladePruefungen(username: string, limit: number): Promise<PruefungsErgebnis[]>;
+
+  ladeLektionFortschritt(username: string): Promise<LektionFortschritt[]>;
+  lektionTeilAbschliessen(username: string, lektionId: string, teil: number): Promise<void>;
+
+  ladeLektionUeberschreibungen(): Promise<LektionInhaltUeberschreibung[]>;
+  speichereLektionUeberschreibung(u: LektionInhaltUeberschreibung): Promise<void>;
+  bildHochladen(zeichen: string, datei: File): Promise<string>;
+
+  ladeCheckpointKonfig(stufeId: string): Promise<StufenCheckpointKonfig>;
+  speichereCheckpointKonfig(konfig: StufenCheckpointKonfig): Promise<void>;
+
+  checkpointSpeichern(ergebnis: StufenCheckpointErgebnis): Promise<void>;
+  ladeCheckpoints(username: string, stufeId: string): Promise<StufenCheckpointErgebnis[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -301,6 +319,118 @@ class SupabaseDatenquelle implements Datenquelle {
       zeitpunkt: String(z.zeitpunkt),
     }));
   }
+
+  async ladeLektionFortschritt(username: string): Promise<LektionFortschritt[]> {
+    const zeilen = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("lektion_fortschritt").select("*").eq("username", username),
+    );
+    return (zeilen ?? []).map((z) => ({
+      username: String(z.username),
+      lektionId: String(z.lektion_id),
+      teil: Number(z.teil),
+      abgeschlossenAm: String(z.abgeschlossen_am),
+    }));
+  }
+
+  async lektionTeilAbschliessen(username: string, lektionId: string, teil: number): Promise<void> {
+    await this.abfrage(
+      this.client.from("lektion_fortschritt").upsert({
+        username,
+        lektion_id: lektionId,
+        teil,
+        abgeschlossen_am: new Date().toISOString(),
+      }),
+    );
+  }
+
+  async ladeLektionUeberschreibungen(): Promise<LektionInhaltUeberschreibung[]> {
+    const zeilen = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("lektion_inhalt_ueberschreibung").select("*"),
+    );
+    return (zeilen ?? []).map((z) => ({
+      zeichen: String(z.zeichen),
+      beispielwortTamil: (z.beispielwort_tamil as string | null) ?? null,
+      beispielwortDeutsch: (z.beispielwort_deutsch as string | null) ?? null,
+      bildUrl: (z.bild_url as string | null) ?? null,
+    }));
+  }
+
+  async speichereLektionUeberschreibung(u: LektionInhaltUeberschreibung): Promise<void> {
+    await this.abfrage(
+      this.client.from("lektion_inhalt_ueberschreibung").upsert({
+        zeichen: u.zeichen,
+        beispielwort_tamil: u.beispielwortTamil,
+        beispielwort_deutsch: u.beispielwortDeutsch,
+        bild_url: u.bildUrl,
+        aktualisiert_am: new Date().toISOString(),
+      }),
+    );
+  }
+
+  async bildHochladen(zeichen: string, datei: File): Promise<string> {
+    const pfad = `${zeichen}-${Date.now()}.${datei.name.split(".").pop() ?? "png"}`;
+    const { error } = await this.client.storage
+      .from("lektion-bilder")
+      .upload(pfad, datei, { upsert: true });
+    if (error) throw new Error(error.message);
+    return this.client.storage.from("lektion-bilder").getPublicUrl(pfad).data.publicUrl;
+  }
+
+  async ladeCheckpointKonfig(stufeId: string): Promise<StufenCheckpointKonfig> {
+    const zeilen = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("stufen_checkpoint_konfig").select("*").eq("stufe_id", stufeId).limit(1),
+    );
+    if (!zeilen || zeilen.length === 0) return standardCheckpointKonfig(stufeId);
+    const z = zeilen[0];
+    return {
+      stufeId: String(z.stufe_id),
+      toleranzProzent: Number(z.toleranz_prozent),
+      anzahlVorherigeBuchstaben: Number(z.anzahl_vorherige_buchstaben),
+    };
+  }
+
+  async speichereCheckpointKonfig(konfig: StufenCheckpointKonfig): Promise<void> {
+    await this.abfrage(
+      this.client.from("stufen_checkpoint_konfig").upsert({
+        stufe_id: konfig.stufeId,
+        toleranz_prozent: konfig.toleranzProzent,
+        anzahl_vorherige_buchstaben: konfig.anzahlVorherigeBuchstaben,
+      }),
+    );
+  }
+
+  async checkpointSpeichern(ergebnis: StufenCheckpointErgebnis): Promise<void> {
+    await this.abfrage(
+      this.client.from("stufen_checkpoint_ergebnisse").insert({
+        username: ergebnis.username,
+        stufe_id: ergebnis.stufeId,
+        bestanden: ergebnis.bestanden,
+        richtig: ergebnis.richtig,
+        gesamt: ergebnis.gesamt,
+        zeitpunkt: ergebnis.zeitpunkt,
+      }),
+    );
+  }
+
+  async ladeCheckpoints(username: string, stufeId: string): Promise<StufenCheckpointErgebnis[]> {
+    const zeilen = await this.abfrage<Record<string, unknown>[]>(
+      this.client
+        .from("stufen_checkpoint_ergebnisse")
+        .select("*")
+        .eq("username", username)
+        .eq("stufe_id", stufeId)
+        .order("zeitpunkt", { ascending: false }),
+    );
+    return (zeilen ?? []).map((z) => ({
+      id: Number(z.id),
+      username: String(z.username),
+      stufeId: String(z.stufe_id),
+      bestanden: Boolean(z.bestanden),
+      richtig: Number(z.richtig),
+      gesamt: Number(z.gesamt),
+      zeitpunkt: String(z.zeitpunkt),
+    }));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -316,6 +446,10 @@ interface LokaleDb {
   hausaufgaben: Hausaufgabe[];
   hausaufgabenStatus: HausaufgabenStatus[];
   pruefungen: PruefungsErgebnis[];
+  lektionFortschritt: LektionFortschritt[];
+  lektionUeberschreibungen: Record<string, LektionInhaltUeberschreibung>;
+  checkpointKonfig: Record<string, StufenCheckpointKonfig>;
+  checkpointErgebnisse: StufenCheckpointErgebnis[];
   naechsteId: number;
 }
 
@@ -323,13 +457,7 @@ const LOKAL_KEY = "tamil_lernen_db_v1";
 
 class LokaleDatenquelle implements Datenquelle {
   private lade(): LokaleDb {
-    try {
-      const roh = localStorage.getItem(LOKAL_KEY);
-      if (roh) return JSON.parse(roh) as LokaleDb;
-    } catch {
-      // beschädigte Daten → frisch starten
-    }
-    return {
+    const leer: LokaleDb = {
       accounts: {},
       punkte: {},
       regeln: {},
@@ -338,8 +466,21 @@ class LokaleDatenquelle implements Datenquelle {
       hausaufgaben: [],
       hausaufgabenStatus: [],
       pruefungen: [],
+      lektionFortschritt: [],
+      lektionUeberschreibungen: {},
+      checkpointKonfig: {},
+      checkpointErgebnisse: [],
       naechsteId: 1,
     };
+    try {
+      const roh = localStorage.getItem(LOKAL_KEY);
+      // Mit den Standardwerten mischen, damit ältere, lokal gespeicherte
+      // Stände auch nach neu hinzugekommenen Feldern nicht abstürzen.
+      if (roh) return { ...leer, ...(JSON.parse(roh) as Partial<LokaleDb>) };
+    } catch {
+      // beschädigte Daten → frisch starten
+    }
+    return leer;
   }
 
   private speichere(db: LokaleDb) {
@@ -472,6 +613,68 @@ class LokaleDatenquelle implements Datenquelle {
       .pruefungen.filter((p) => p.username === username)
       .sort((a, b) => b.zeitpunkt.localeCompare(a.zeitpunkt))
       .slice(0, limit);
+  }
+
+  async ladeLektionFortschritt(username: string): Promise<LektionFortschritt[]> {
+    return this.lade().lektionFortschritt.filter((f) => f.username === username);
+  }
+
+  async lektionTeilAbschliessen(username: string, lektionId: string, teil: number): Promise<void> {
+    const db = this.lade();
+    const bereitsDa = db.lektionFortschritt.some(
+      (f) => f.username === username && f.lektionId === lektionId && f.teil === teil,
+    );
+    if (!bereitsDa) {
+      db.lektionFortschritt.push({
+        username,
+        lektionId,
+        teil,
+        abgeschlossenAm: new Date().toISOString(),
+      });
+      this.speichere(db);
+    }
+  }
+
+  async ladeLektionUeberschreibungen(): Promise<LektionInhaltUeberschreibung[]> {
+    return Object.values(this.lade().lektionUeberschreibungen);
+  }
+
+  async speichereLektionUeberschreibung(u: LektionInhaltUeberschreibung): Promise<void> {
+    const db = this.lade();
+    db.lektionUeberschreibungen[u.zeichen] = u;
+    this.speichere(db);
+  }
+
+  async bildHochladen(_zeichen: string, datei: File): Promise<string> {
+    // Test-Modus ohne Storage: Bild als data:-URL direkt im localStorage.
+    return await new Promise<string>((resolve, reject) => {
+      const leser = new FileReader();
+      leser.onload = () => resolve(String(leser.result));
+      leser.onerror = () => reject(new Error("Bild konnte nicht gelesen werden"));
+      leser.readAsDataURL(datei);
+    });
+  }
+
+  async ladeCheckpointKonfig(stufeId: string): Promise<StufenCheckpointKonfig> {
+    return this.lade().checkpointKonfig[stufeId] ?? standardCheckpointKonfig(stufeId);
+  }
+
+  async speichereCheckpointKonfig(konfig: StufenCheckpointKonfig): Promise<void> {
+    const db = this.lade();
+    db.checkpointKonfig[konfig.stufeId] = konfig;
+    this.speichere(db);
+  }
+
+  async checkpointSpeichern(ergebnis: StufenCheckpointErgebnis): Promise<void> {
+    const db = this.lade();
+    db.checkpointErgebnisse.push({ ...ergebnis, id: db.naechsteId++ });
+    this.speichere(db);
+  }
+
+  async ladeCheckpoints(username: string, stufeId: string): Promise<StufenCheckpointErgebnis[]> {
+    return this.lade()
+      .checkpointErgebnisse.filter((c) => c.username === username && c.stufeId === stufeId)
+      .sort((a, b) => b.zeitpunkt.localeCompare(a.zeitpunkt));
   }
 }
 

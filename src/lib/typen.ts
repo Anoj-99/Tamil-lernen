@@ -101,3 +101,45 @@ export function isoWoche(datum: Date): string {
   const woche = Math.ceil(((d.getTime() - jahresanfang.getTime()) / 86400000 + 1) / 7);
   return `${d.getUTCFullYear()}-W${String(woche).padStart(2, "0")}`;
 }
+
+// ---------------------------------------------------------------------------
+// Lektionen (geführtes Anfänger-Curriculum)
+// ---------------------------------------------------------------------------
+
+// Fortschritt eines Schülers durch die Teile einer Lektion (1 = Vorstellung
+// gesehen, 2..6 = jeweiliger Teil mit allem mind. einmal richtig).
+export interface LektionFortschritt {
+  username: string;
+  lektionId: string; // z.B. "1.1"
+  teil: number; // 1..6
+  abgeschlossenAm: string;
+}
+
+// Vom Lehrer überschriebener Inhalt zu einem einzelnen Buchstaben (Beispielwort
+// oder Bild), überlagert die statischen Vorgaben aus data/lektionen.ts.
+export interface LektionInhaltUeberschreibung {
+  zeichen: string;
+  beispielwortTamil: string | null;
+  beispielwortDeutsch: string | null;
+  bildUrl: string | null;
+}
+
+export interface StufenCheckpointKonfig {
+  stufeId: string;
+  toleranzProzent: number; // z.B. 80
+  anzahlVorherigeBuchstaben: number; // wie viele Buchstaben der Vorstufe eingemischt werden
+}
+
+export function standardCheckpointKonfig(stufeId: string): StufenCheckpointKonfig {
+  return { stufeId, toleranzProzent: 80, anzahlVorherigeBuchstaben: 3 };
+}
+
+export interface StufenCheckpointErgebnis {
+  id?: number;
+  username: string;
+  stufeId: string;
+  bestanden: boolean;
+  richtig: number;
+  gesamt: number;
+  zeitpunkt: string;
+}

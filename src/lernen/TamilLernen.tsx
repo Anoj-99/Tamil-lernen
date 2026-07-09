@@ -9,6 +9,7 @@ import ErkennenModus from "./ErkennenModus";
 import FortschrittSeite from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
 import LehrerBereich from "./LehrerBereich";
+import LektionenSeite from "./LektionenSeite";
 import LoginSeite from "./LoginSeite";
 import NachzeichnenModus from "./NachzeichnenModus";
 import PositionCheckModus from "./PositionCheckModus";
@@ -18,6 +19,7 @@ import { Reihenfolge } from "./uebungsHelfer";
 import { useRegeln } from "./useRegeln";
 
 type Modus =
+  | "lektionen"
   | "erkennen"
   | "nachzeichnen"
   | "position"
@@ -26,6 +28,7 @@ type Modus =
   | "lehrer";
 
 const MODI: { id: Modus; name: string }[] = [
+  { id: "lektionen", name: "Lektionen" },
   { id: "erkennen", name: "Erkennen" },
   { id: "nachzeichnen", name: "Nachzeichnen" },
   { id: "position", name: "Position-Check" },
@@ -34,8 +37,8 @@ const MODI: { id: Modus; name: string }[] = [
 ];
 
 const NAV_SPALTEN: Record<number, string> = {
-  5: "sm:grid-cols-5",
   6: "sm:grid-cols-6",
+  7: "sm:grid-cols-7",
 };
 
 export default function TamilLernen() {
@@ -179,6 +182,7 @@ export default function TamilLernen() {
         )}
 
         <main>
+          {modus === "lektionen" && <LektionenSeite />}
           {modus === "erkennen" && (
             <ErkennenModus
               key={gruppe.id}
