@@ -10,6 +10,9 @@ export const EP_WERTE = {
   nachzeichnenFertig: 1,
   gruppeGeschafft: 20,
   pruefungBestanden: 50,
+  lektionTeilGeschafft: 5,
+  lektionAbgeschlossen: 25,
+  stufenCheckpointBestanden: 40,
 } as const;
 
 export function levelAus(epGesamt: number): number {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Lektion, LektionBuchstabe } from "../data/lektionen";
 import { datenquelle } from "../lib/datenquelle";
 import { LektionInhaltUeberschreibung } from "../lib/typen";
@@ -47,8 +47,12 @@ export function useLektionInhalt(lektion: Lektion | undefined) {
     };
   }, []);
 
-  const buchstaben: EffektiverBuchstabe[] =
-    lektion?.buchstaben.map((b) => anwenden(b, ueberschreibungen.get(b.zeichen))) ?? [];
+  // Referenzstabil halten, solange sich Lektion/Anpassungen nicht ändern -
+  // Teil-Komponenten hängen ihre Übungswarteschlangen an diese Referenz.
+  const buchstaben = useMemo<EffektiverBuchstabe[]>(
+    () => lektion?.buchstaben.map((b) => anwenden(b, ueberschreibungen.get(b.zeichen))) ?? [],
+    [lektion, ueberschreibungen],
+  );
 
   return { buchstaben, laden };
 }

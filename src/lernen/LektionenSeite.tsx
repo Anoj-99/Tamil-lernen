@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { buchstabenDerStufe, lektionen, lektionById, stufen } from "../data/lektionen";
+import { EP_WERTE } from "../lib/punkteLogik";
 import { useKonto } from "./KontoContext";
+import StufenCheckpoint from "./StufenCheckpoint";
+import TeilCheckpoint from "./TeilCheckpoint";
 import TeilErkennen from "./TeilErkennen";
 import TeilNachzeichnen from "./TeilNachzeichnen";
 import TeilVerbinden from "./TeilVerbinden";
 import TeilVorstellung from "./TeilVorstellung";
-import { useLektionFortschritt } from "./useLektionFortschritt";
+import { useLektionFortschritt, useStufeAbgeschlossen } from "./useLektionFortschritt";
 import { useLektionInhalt } from "./useLektionInhalt";
 
 const TEIL_NAMEN: Record<number, string> = {
@@ -16,25 +19,6 @@ const TEIL_NAMEN: Record<number, string> = {
   5: "Verbinden",
   6: "Checkpoint",
 };
-
-// Platzhalter, bis die jeweilige Phase den echten Teil ersetzt.
-function TeilPlatzhalter({ teil, weiter }: { teil: number; weiter: () => void }) {
-  return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-      <p className="text-sm text-slate-500">
-        Teil {teil} — {TEIL_NAMEN[teil]}
-      </p>
-      <p className="text-slate-400">Kommt in Kürze.</p>
-      <button
-        type="button"
-        onClick={weiter}
-        className="rounded-lg bg-slate-900 px-5 py-2.5 text-white hover:bg-slate-700"
-      >
-        Weiter (Platzhalter)
-      </button>
-    </div>
-  );
-}
 
 function LektionsFortschrittsleiste({
   aktuellerTeil,
@@ -63,8 +47,9 @@ function LektionsFortschrittsleiste({
 }
 
 export default function LektionenSeite() {
-  const { konto } = useKonto();
+  const { konto, belohne } = useKonto();
   const [lektionId, setLektionId] = useState(lektionen[0]?.id ?? "");
+  const [checkpointGeschafft, setCheckpointGeschafft] = useState(false);
   const lektion = lektionById(lektionId);
   const { abgeschlosseneTeile, aktuellerTeil, teilAbschliessen, laden } = useLektionFortschritt(
     konto?.username ?? "",
@@ -80,6 +65,24 @@ export default function LektionenSeite() {
     () => (stufe ? buchstabenDerStufe(stufe.id) : []),
     [stufe],
   );
+  const stufeAbgeschlossen = useStufeAbgeschlossen(
+    konto?.username ?? "",
+    stufe,
+    lektionId,
+    aktuellerTeil > 6,
+  );
+
+  // Vergibt EP für jeden gemeisterten Teil, plus einen Bonus, sobald die
+  // ganze Lektion (Teil 6) geschafft ist. Der Nachfrage-Guard verhindert
+  // doppelte EP, falls teilFertig für einen bereits erledigten Teil erneut
+  // aufgerufen würde.
+  const teilFertig = (teil: number) => {
+    if (!abgeschlosseneTeile.has(teil)) {
+      belohne(EP_WERTE.lektionTeilGeschafft);
+      if (teil === 6) belohne(EP_WERTE.lektionAbgeschlossen);
+    }
+    teilAbschliessen(teil);
+  };
 
   if (!konto || lektionen.length === 0) return null;
 
@@ -122,46 +125,54 @@ export default function LektionenSeite() {
           </div>
 
           {aktuellerTeil > 6 ? (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-green-300 bg-green-50 p-8 text-center">
-              <p className="text-lg font-semibold text-green-800">
-                Lektion abgeschlossen! 🎉
-              </p>
-              <p className="text-sm text-green-700">
-                Alle Teile von „{lektion.name}" mindestens einmal richtig gemeistert.
-              </p>
-            </div>
+            stufe && stufeAbgeschlossen && !checkpointGeschafft ? (
+              <StufenCheckpoint stufe={stufe} weiter={() => setCheckpointGeschafft(true)} />
+            ) : (
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-green-300 bg-green-50 p-8 text-center">
+                <p className="text-lg font-semibold text-green-800">
+                  {stufe && stufeAbgeschlossen
+                    ? `Stufe „${stufe.name}" abgeschlossen! 🏆`
+                    : "Lektion abgeschlossen! 🎉"}
+                </p>
+                <p className="text-sm text-green-700">
+                  Alle Teile von „{lektion.name}" mindestens einmal richtig gemeistert.
+                </p>
+              </div>
+            )
           ) : aktuellerTeil === 1 ? (
-            <TeilVorstellung buchstaben={buchstaben} weiter={() => teilAbschliessen(1)} />
+            <TeilVorstellung buchstaben={buchstaben} weiter={() => teilFertig(1)} />
           ) : aktuellerTeil === 2 ? (
             <TeilErkennen
               key={`${lektionId}-2`}
               buchstaben={buchstaben}
               richtung="zeichen_zu_laut"
-              weiter={() => teilAbschliessen(2)}
+              weiter={() => teilFertig(2)}
             />
           ) : aktuellerTeil === 3 ? (
             <TeilErkennen
               key={`${lektionId}-3`}
               buchstaben={buchstaben}
               richtung="laut_zu_zeichen"
-              weiter={() => teilAbschliessen(3)}
+              weiter={() => teilFertig(3)}
             />
           ) : aktuellerTeil === 4 ? (
             <TeilNachzeichnen
               key={`${lektionId}-4`}
               buchstaben={buchstaben}
-              weiter={() => teilAbschliessen(4)}
+              weiter={() => teilFertig(4)}
             />
           ) : aktuellerTeil === 5 ? (
             <TeilVerbinden
               key={`${lektionId}-5`}
               paare={lektion?.verbindenPaare ?? []}
-              weiter={() => teilAbschliessen(5)}
+              weiter={() => teilFertig(5)}
             />
           ) : (
-            <TeilPlatzhalter
-              teil={aktuellerTeil}
-              weiter={() => teilAbschliessen(aktuellerTeil)}
+            <TeilCheckpoint
+              key={`${lektionId}-6`}
+              buchstaben={buchstaben}
+              verbindenPaare={lektion?.verbindenPaare ?? []}
+              weiter={() => teilFertig(6)}
             />
           )}
         </>
