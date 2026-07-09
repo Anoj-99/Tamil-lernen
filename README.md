@@ -1,4 +1,4 @@
-# Tamil-Schrift üben
+# Akaram (அகரம்) – Tamil-Schrift lernen
 
 Eigenständige Lern-App für Tamil-Konsonant-Vokal-Kombinationen
 (deutschsprachige UI), aufgebaut wie eine Fahrschul-Theorie-App:

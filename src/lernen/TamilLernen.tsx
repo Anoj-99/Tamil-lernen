@@ -84,7 +84,11 @@ export default function TamilLernen() {
     <div className="min-h-dvh bg-slate-100 text-slate-900">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
         <header className="text-center">
-          <h1 className="text-2xl font-bold">Tamil-Schrift üben</h1>
+          <img
+            src="/logo/akaram-logo-horizontal.png"
+            alt="Akaram – Tamil-Schrift lernen"
+            className="mx-auto h-14 w-auto"
+          />
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm">
             <span className="rounded-full border border-slate-300 bg-white px-3 py-1 font-medium">
               {konto.username}

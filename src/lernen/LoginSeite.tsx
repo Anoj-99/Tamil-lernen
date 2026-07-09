@@ -28,7 +28,11 @@ export default function LoginSeite() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-slate-100 px-4 text-slate-900">
       <div className="w-full max-w-sm">
-        <h1 className="mb-1 text-center text-2xl font-bold">Tamil-Schrift üben</h1>
+        <img
+          src="/logo/akaram-logo-full.png"
+          alt="Akaram – Tamil-Schrift lernen"
+          className="mx-auto mb-3 h-40 w-auto"
+        />
         <p className="mb-6 text-center text-sm text-slate-500">
           Gib deinen Benutzernamen ein – ein neuer Name legt automatisch ein
           neues Konto an. Kein Passwort nötig.
