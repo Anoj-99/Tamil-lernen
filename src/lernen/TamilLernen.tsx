@@ -83,31 +83,33 @@ export default function TamilLernen() {
   return (
     <div className="min-h-dvh bg-slate-100 text-slate-900">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
-        <header className="text-center">
-          <img
-            src="/logo/akaram-logo-horizontal.png"
-            alt="Akaram – Tamil-Schrift lernen"
-            className="mx-auto h-14 w-auto"
-          />
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm">
-            <span className="rounded-full border border-slate-300 bg-white px-3 py-1 font-medium">
-              {konto.username}
-            </span>
-            {konto.rolle === "lehrer" && (
-              <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
-                Lehrer
+        <header>
+          <div className="flex flex-wrap items-center gap-3">
+            <img
+              src="/logo/akaram-logo-horizontal.png"
+              alt="Akaram – Tamil-Schrift lernen"
+              className="h-12 w-auto shrink-0"
+            />
+            <div className="flex flex-1 flex-wrap items-center justify-end gap-2 text-sm">
+              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 font-medium">
+                {konto.username}
               </span>
-            )}
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-full border border-slate-300 bg-white px-3 py-1 text-slate-500 hover:text-slate-900"
-            >
-              Abmelden
-            </button>
+              {konto.rolle === "lehrer" && (
+                <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
+                  Lehrer
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-slate-500 hover:text-slate-900"
+              >
+                Abmelden
+              </button>
+            </div>
           </div>
           {istLokalerModus && (
-            <p className="mt-2 text-xs text-amber-700">
+            <p className="mt-2 text-center text-xs text-amber-700">
               Test-Modus: keine Datenbank verbunden – Fortschritt bleibt nur
               auf diesem Gerät.
             </p>
