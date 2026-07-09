@@ -39,7 +39,6 @@ für den anon-Key offen. Es liegen dort nur Benutzernamen, Punkte und
 ## Lokal starten
 
 ```sh
-cd tamil-lernen
 npm install
 npm run dev
 ```
@@ -54,16 +53,17 @@ npm run build   # Typecheck + Produktions-Build nach dist/
 ## Deployment auf Vercel (eigenes Projekt, eigene Domain)
 
 1. Auf [vercel.com](https://vercel.com) → **Add New… → Project** → das
-   Repo `Anoj-99/tamilconnect` importieren (es entsteht ein **zweites**,
-   von TamilConnect unabhängiges Vercel-Projekt).
-2. **Root Directory** auf `tamil-lernen` setzen (Edit neben Root Directory).
-3. Framework-Preset **Vite** wird automatisch erkannt – nichts weiter
-   nötig, keine Environment-Variablen.
-4. Projektname z.B. `tamil-lernen` → die App läuft dann unter
+   Repo `Anoj-99/tamil-lernen` importieren (eigenständiges Repo, kein
+   Root-Directory-Trick mehr nötig).
+2. Framework-Preset **Vite** wird automatisch erkannt – nichts weiter
+   nötig, Root Directory bleibt `/` (Standard).
+3. Projektname z.B. `tamil-lernen` → die App läuft dann unter
    `tamil-lernen.vercel.app` (Production-Deployments sind öffentlich,
    kein Vercel-Login nötig).
 
-Hinweis: Das Production-Deployment baut vom `main`-Branch. Solange der
-Branch mit dieser App noch nicht gemergt ist, in den Projekt-Settings
-unter **Git → Production Branch** den Feature-Branch eintragen – oder
-einfach erst nach dem Merge importieren.
+Falls bisher ein Vercel-Projekt mit Root Directory `tamil-lernen` im
+`tamilconnect`-Repo verbunden war: in den Projekt-Settings unter
+**Git** die Repo-Verbindung auf `Anoj-99/tamil-lernen` umstellen und
+Root Directory wieder auf `/` setzen – die Environment-Variablen
+(`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) bleiben dabei
+erhalten.
