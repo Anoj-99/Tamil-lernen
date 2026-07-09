@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Lektion, LektionBuchstabe, lektionen, Stufe, stufen, vorherigeStufe } from "../data/lektionen";
 import {
   Konsonant,
   konsonanten,
@@ -10,8 +11,10 @@ import { levelAus } from "../lib/punkteLogik";
 import {
   FehlerEintrag,
   LeitnerEintrag,
+  LektionInhaltUeberschreibung,
   RegelEintrag,
   SchuelerUebersicht,
+  StufenCheckpointKonfig,
 } from "../lib/typen";
 import {
   AmpelPunkt,
@@ -19,6 +22,7 @@ import {
   formatiereZeitpunkt,
 } from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
+import { anwenden } from "./useLektionInhalt";
 import { Hausaufgabe, HausaufgabenStatus } from "../lib/typen";
 
 const POSITION_OPTIONEN: [PositionsWert, string][] = [
@@ -27,7 +31,7 @@ const POSITION_OPTIONEN: [PositionsWert, string][] = [
   ["anfang_mitte_ende", "Anfang, Mitte und Ende"],
 ];
 
-type LehrerTab = "regeln" | "schueler" | "hausaufgaben";
+type LehrerTab = "regeln" | "lektionen" | "schueler" | "hausaufgaben";
 
 interface Props {
   regeln: Map<string, RegelEintrag>;
@@ -252,7 +256,328 @@ function SchuelerListe({ schueler }: { schueler: SchuelerUebersicht[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tab 3: Hausaufgaben zuweisen und verfolgen
+// Tab 3: Lektionen (Beispielwörter/Bilder + Stufen-Checkpoint-Toleranz)
+// ---------------------------------------------------------------------------
+
+function BuchstabeInhaltZeile({
+  basis,
+  ueberschreibung,
+  aktualisiere,
+  zuruecksetzen,
+}: {
+  basis: LektionBuchstabe;
+  ueberschreibung: LektionInhaltUeberschreibung | undefined;
+  aktualisiere: (u: LektionInhaltUeberschreibung) => Promise<void>;
+  zuruecksetzen: (zeichen: string) => Promise<void>;
+}) {
+  const effektiv = anwenden(basis, ueberschreibung);
+  const [tamil, setTamil] = useState(effektiv.beispielwortTamil);
+  const [deutsch, setDeutsch] = useState(effektiv.beispielwortDeutsch);
+  const [speichert, setSpeichert] = useState(false);
+  const [ladeBild, setLadeBild] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTamil(effektiv.beispielwortTamil);
+    setDeutsch(effektiv.beispielwortDeutsch);
+    // effektiv wird aus basis+ueberschreibung neu gebaut - beide als Deps
+    // reichen, effektiv selbst ist jedes Mal ein neues Objekt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basis, ueberschreibung]);
+
+  const geaendert =
+    tamil !== effektiv.beispielwortTamil || deutsch !== effektiv.beispielwortDeutsch;
+
+  const speichern = async () => {
+    setSpeichert(true);
+    setFehler(null);
+    try {
+      await aktualisiere({
+        zeichen: basis.zeichen,
+        beispielwortTamil: tamil,
+        beispielwortDeutsch: deutsch,
+        bildUrl: ueberschreibung?.bildUrl ?? null,
+      });
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Speichern fehlgeschlagen");
+    } finally {
+      setSpeichert(false);
+    }
+  };
+
+  const bildAendern = async (datei: File) => {
+    setLadeBild(true);
+    setFehler(null);
+    try {
+      const url = await datenquelle.bildHochladen(basis.zeichen, datei);
+      await aktualisiere({
+        zeichen: basis.zeichen,
+        beispielwortTamil: tamil,
+        beispielwortDeutsch: deutsch,
+        bildUrl: url,
+      });
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Hochladen fehlgeschlagen");
+    } finally {
+      setLadeBild(false);
+    }
+  };
+
+  const ruecksetzen = async () => {
+    setSpeichert(true);
+    try {
+      await zuruecksetzen(basis.zeichen);
+    } finally {
+      setSpeichert(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="tamil-schrift w-12 text-3xl">{basis.zeichen}</span>
+        <span className="w-14 text-sm text-slate-500">{basis.latein}</span>
+        <img
+          src={effektiv.bildPfad}
+          alt={effektiv.beispielwortDeutsch}
+          className="h-12 w-12 rounded-lg border border-slate-200 object-contain"
+        />
+        <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
+          {ladeBild ? "Lädt hoch …" : "Bild ändern"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={ladeBild}
+            onChange={(e) => {
+              const datei = e.target.files?.[0];
+              e.target.value = "";
+              if (datei) void bildAendern(datei);
+            }}
+          />
+        </label>
+        {ueberschreibung && (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+            angepasst
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          value={tamil}
+          onChange={(e) => setTamil(e.target.value)}
+          placeholder="Beispielwort (Tamil)"
+          className="tamil-schrift min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          aria-label={`Beispielwort Tamil für ${basis.zeichen}`}
+        />
+        <input
+          type="text"
+          value={deutsch}
+          onChange={(e) => setDeutsch(e.target.value)}
+          placeholder="Lautschrift (Deutsch)"
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          aria-label={`Beispielwort Lautschrift für ${basis.zeichen}`}
+        />
+        <button
+          type="button"
+          onClick={speichern}
+          disabled={!geaendert || speichert}
+          className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white disabled:bg-slate-300"
+        >
+          Speichern
+        </button>
+        {ueberschreibung && (
+          <button
+            type="button"
+            onClick={ruecksetzen}
+            disabled={speichert}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-600"
+          >
+            Zurücksetzen
+          </button>
+        )}
+      </div>
+      {fehler && <p className="mt-1 text-xs text-red-600">{fehler}</p>}
+    </div>
+  );
+}
+
+function LektionInhalteBlock({
+  lektion,
+  ueberschreibungen,
+  aktualisiere,
+  zuruecksetzen,
+}: {
+  lektion: Lektion;
+  ueberschreibungen: Map<string, LektionInhaltUeberschreibung>;
+  aktualisiere: (u: LektionInhaltUeberschreibung) => Promise<void>;
+  zuruecksetzen: (zeichen: string) => Promise<void>;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-slate-700">{lektion.name}</p>
+      <div className="flex flex-col gap-2">
+        {lektion.buchstaben.map((b) => (
+          <BuchstabeInhaltZeile
+            key={b.zeichen}
+            basis={b}
+            ueberschreibung={ueberschreibungen.get(b.zeichen)}
+            aktualisiere={aktualisiere}
+            zuruecksetzen={zuruecksetzen}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CheckpointKonfigZeile({ stufe }: { stufe: Stufe }) {
+  const [konfig, setKonfig] = useState<StufenCheckpointKonfig | null>(null);
+  const [speichert, setSpeichert] = useState(false);
+  const [gespeichert, setGespeichert] = useState(false);
+
+  useEffect(() => {
+    datenquelle.ladeCheckpointKonfig(stufe.id).then(setKonfig).catch(() => {});
+  }, [stufe.id]);
+
+  if (!konfig) return <p className="text-sm text-slate-400">Lade …</p>;
+
+  const speichern = async () => {
+    setSpeichert(true);
+    setGespeichert(false);
+    try {
+      await datenquelle.speichereCheckpointKonfig(konfig);
+      setGespeichert(true);
+    } finally {
+      setSpeichert(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 p-3">
+      <p className="mb-2 text-sm font-medium text-slate-700">{stufe.name}</p>
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        <label className="flex items-center gap-1.5">
+          Toleranz
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={konfig.toleranzProzent}
+            onChange={(e) => {
+              setGespeichert(false);
+              setKonfig({
+                ...konfig,
+                toleranzProzent: Math.min(100, Math.max(0, Number(e.target.value) || 0)),
+              });
+            }}
+            className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+            aria-label={`Toleranz für ${stufe.name}`}
+          />
+          %
+        </label>
+        <label className="flex items-center gap-1.5">
+          Buchstaben der Vorstufe einmischen
+          <input
+            type="number"
+            min={0}
+            value={konfig.anzahlVorherigeBuchstaben}
+            onChange={(e) => {
+              setGespeichert(false);
+              setKonfig({
+                ...konfig,
+                anzahlVorherigeBuchstaben: Math.max(0, Number(e.target.value) || 0),
+              });
+            }}
+            className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+            aria-label={`Anzahl Buchstaben der Vorstufe für ${stufe.name}`}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={speichern}
+          disabled={speichert}
+          className="rounded-lg bg-slate-900 px-3 py-1.5 text-white disabled:bg-slate-300"
+        >
+          Speichern
+        </button>
+        {gespeichert && <span className="text-xs text-green-700">Gespeichert.</span>}
+      </div>
+      {!vorherigeStufe(stufe.id) && (
+        <p className="mt-1.5 text-xs text-slate-400">
+          Es gibt noch keine vorherige Stufe zum Einmischen.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function LektionenVerwaltung() {
+  const [ueberschreibungen, setUeberschreibungen] = useState<
+    Map<string, LektionInhaltUeberschreibung>
+  >(new Map());
+  const [laden, setLaden] = useState(true);
+
+  const neuLaden = () => {
+    datenquelle
+      .ladeLektionUeberschreibungen()
+      .then((liste) => setUeberschreibungen(new Map(liste.map((u) => [u.zeichen, u]))))
+      .catch(() => {})
+      .finally(() => setLaden(false));
+  };
+
+  useEffect(neuLaden, []);
+
+  const aktualisiere = async (u: LektionInhaltUeberschreibung) => {
+    await datenquelle.speichereLektionUeberschreibung(u);
+    neuLaden();
+  };
+
+  const zuruecksetzen = async (zeichen: string) => {
+    await datenquelle.loescheLektionUeberschreibung(zeichen);
+    neuLaden();
+  };
+
+  if (laden) return <p className="text-sm text-slate-400">Lade …</p>;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <p className="mb-2 text-sm text-slate-500">
+          Beispielwörter und Bilder je Buchstabe – Änderungen wirken sofort für alle Schüler.
+        </p>
+        <div className="flex flex-col gap-4">
+          {lektionen.map((lektion) => (
+            <LektionInhalteBlock
+              key={lektion.id}
+              lektion={lektion}
+              ueberschreibungen={ueberschreibungen}
+              aktualisiere={aktualisiere}
+              zuruecksetzen={zuruecksetzen}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-1 text-sm font-medium text-slate-700">Stufen-Checkpoints</p>
+        <p className="mb-2 text-sm text-slate-500">
+          Ab wie viel Prozent richtiger Antworten gilt eine Stufe als bestanden, und wie viele
+          Buchstaben der vorherigen Stufe werden zur Wiederholung eingemischt.
+        </p>
+        <div className="flex flex-col gap-2">
+          {stufen.map((s) => (
+            <CheckpointKonfigZeile key={s.id} stufe={s} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab 4: Hausaufgaben zuweisen und verfolgen
 // ---------------------------------------------------------------------------
 
 function HausaufgabenVerwaltung({
@@ -436,10 +761,11 @@ export default function LehrerBereich({ regeln, aktualisiere, zuruecksetzen }: P
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {(
           [
             ["regeln", "Regeln"],
+            ["lektionen", "Lektionen"],
             ["schueler", "Schüler"],
             ["hausaufgaben", "Hausaufgaben"],
           ] as [LehrerTab, string][]
@@ -480,6 +806,7 @@ export default function LehrerBereich({ regeln, aktualisiere, zuruecksetzen }: P
             })}
           </div>
         )}
+        {tab === "lektionen" && <LektionenVerwaltung />}
         {tab === "schueler" && <SchuelerListe schueler={schueler} />}
         {tab === "hausaufgaben" && (
           <HausaufgabenVerwaltung schueler={schueler} lehrerName={konto.username} />

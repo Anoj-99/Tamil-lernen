@@ -7,7 +7,7 @@ export interface EffektiverBuchstabe extends LektionBuchstabe {
   vomLehrerAngepasst: boolean;
 }
 
-function anwenden(
+export function anwenden(
   basis: LektionBuchstabe,
   ueberschreibung: LektionInhaltUeberschreibung | undefined,
 ): EffektiverBuchstabe {

@@ -58,6 +58,7 @@ export interface Datenquelle {
 
   ladeLektionUeberschreibungen(): Promise<LektionInhaltUeberschreibung[]>;
   speichereLektionUeberschreibung(u: LektionInhaltUeberschreibung): Promise<void>;
+  loescheLektionUeberschreibung(zeichen: string): Promise<void>;
   bildHochladen(zeichen: string, datei: File): Promise<string>;
 
   ladeCheckpointKonfig(stufeId: string): Promise<StufenCheckpointKonfig>;
@@ -367,6 +368,12 @@ class SupabaseDatenquelle implements Datenquelle {
     );
   }
 
+  async loescheLektionUeberschreibung(zeichen: string): Promise<void> {
+    await this.abfrage(
+      this.client.from("lektion_inhalt_ueberschreibung").delete().eq("zeichen", zeichen),
+    );
+  }
+
   async bildHochladen(zeichen: string, datei: File): Promise<string> {
     const pfad = `${zeichen}-${Date.now()}.${datei.name.split(".").pop() ?? "png"}`;
     const { error } = await this.client.storage
@@ -642,6 +649,12 @@ class LokaleDatenquelle implements Datenquelle {
   async speichereLektionUeberschreibung(u: LektionInhaltUeberschreibung): Promise<void> {
     const db = this.lade();
     db.lektionUeberschreibungen[u.zeichen] = u;
+    this.speichere(db);
+  }
+
+  async loescheLektionUeberschreibung(zeichen: string): Promise<void> {
+    const db = this.lade();
+    delete db.lektionUeberschreibungen[zeichen];
     this.speichere(db);
   }
 
