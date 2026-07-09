@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { buchstabenDerStufe, lektionen, lektionById, stufen } from "../data/lektionen";
 import { useKonto } from "./KontoContext";
+import TeilErkennen from "./TeilErkennen";
 import TeilVorstellung from "./TeilVorstellung";
 import { useLektionFortschritt } from "./useLektionFortschritt";
 import { useLektionInhalt } from "./useLektionInhalt";
@@ -129,6 +130,20 @@ export default function LektionenSeite() {
             </div>
           ) : aktuellerTeil === 1 ? (
             <TeilVorstellung buchstaben={buchstaben} weiter={() => teilAbschliessen(1)} />
+          ) : aktuellerTeil === 2 ? (
+            <TeilErkennen
+              key={`${lektionId}-2`}
+              buchstaben={buchstaben}
+              richtung="zeichen_zu_laut"
+              weiter={() => teilAbschliessen(2)}
+            />
+          ) : aktuellerTeil === 3 ? (
+            <TeilErkennen
+              key={`${lektionId}-3`}
+              buchstaben={buchstaben}
+              richtung="laut_zu_zeichen"
+              weiter={() => teilAbschliessen(3)}
+            />
           ) : (
             <TeilPlatzhalter
               teil={aktuellerTeil}
