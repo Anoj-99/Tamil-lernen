@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { buchstabenDerStufe, lektionen, lektionById, stufen } from "../data/lektionen";
 import { useKonto } from "./KontoContext";
+import TeilVorstellung from "./TeilVorstellung";
 import { useLektionFortschritt } from "./useLektionFortschritt";
+import { useLektionInhalt } from "./useLektionInhalt";
 
 const TEIL_NAMEN: Record<number, string> = {
   1: "Vorstellung",
@@ -65,6 +67,7 @@ export default function LektionenSeite() {
     konto?.username ?? "",
     lektionId,
   );
+  const { buchstaben, laden: inhaltLaden } = useLektionInhalt(lektion);
 
   const stufe = useMemo(
     () => stufen.find((s) => s.id === lektion?.stufeId),
@@ -77,7 +80,7 @@ export default function LektionenSeite() {
 
   if (!konto || lektionen.length === 0) return null;
 
-  if (laden) {
+  if (laden || inhaltLaden) {
     return <p className="text-center text-slate-500">Lade Fortschritt …</p>;
   }
 
@@ -124,6 +127,8 @@ export default function LektionenSeite() {
                 Alle Teile von „{lektion.name}" mindestens einmal richtig gemeistert.
               </p>
             </div>
+          ) : aktuellerTeil === 1 ? (
+            <TeilVorstellung buchstaben={buchstaben} weiter={() => teilAbschliessen(1)} />
           ) : (
             <TeilPlatzhalter
               teil={aktuellerTeil}
