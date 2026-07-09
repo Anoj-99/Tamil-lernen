@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { buchstabenDerStufe, lektionen, lektionById, stufen } from "../data/lektionen";
 import { useKonto } from "./KontoContext";
 import TeilErkennen from "./TeilErkennen";
+import TeilNachzeichnen from "./TeilNachzeichnen";
 import TeilVorstellung from "./TeilVorstellung";
 import { useLektionFortschritt } from "./useLektionFortschritt";
 import { useLektionInhalt } from "./useLektionInhalt";
@@ -143,6 +144,12 @@ export default function LektionenSeite() {
               buchstaben={buchstaben}
               richtung="laut_zu_zeichen"
               weiter={() => teilAbschliessen(3)}
+            />
+          ) : aktuellerTeil === 4 ? (
+            <TeilNachzeichnen
+              key={`${lektionId}-4`}
+              buchstaben={buchstaben}
+              weiter={() => teilAbschliessen(4)}
             />
           ) : (
             <TeilPlatzhalter

@@ -4,6 +4,7 @@ import {
   Kombination,
   strichfolgeAuZeichen,
   strichfolgenKonsonanten,
+  strichfolgenVokale,
   strichfolgenVokalzeichen,
   StrichSchritt,
   umschliessendeVokale,
@@ -227,4 +228,56 @@ export function zeichneVorlage(
   )) {
     zeichnePfeil(ctx, pfeil, skala);
   }
+}
+
+// Wie zeichneVorlage, aber für einen eigenständigen Vokal (kein Konsonant,
+// keine Kombination) - für Teil 4 "Nachzeichnen" der Lektionen. Nutzt die
+// Prozent-Koordinaten aus strichfolgenVokale direkt auf der Ink-Box des
+// Zeichens, ohne die Konsonant/Vokalzeichen-Aufteilung von zeichneVorlage.
+export function zeichneVorlageVokal(
+  canvas: HTMLCanvasElement,
+  zeichen: string,
+  cssGroesse: number,
+) {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cssGroesse * dpr;
+  canvas.height = cssGroesse * dpr;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssGroesse, cssGroesse);
+
+  const basis = inkMetrik(ctx, zeichen, MESS_GROESSE);
+  const maxAusdehnung = cssGroesse * 0.72;
+  const skalierung = Math.min(
+    maxAusdehnung / Math.max(basis.breite, 1),
+    maxAusdehnung / Math.max(basis.hoehe, 1),
+  );
+  const fontPx = MESS_GROESSE * skalierung;
+  const metrik = inkMetrik(ctx, zeichen, fontPx);
+
+  const ursprungX = cssGroesse / 2 - metrik.breite / 2 + metrik.links;
+  const grundlinieY = cssGroesse / 2 - metrik.hoehe / 2 + metrik.oben;
+
+  ctx.font = `${fontPx}px ${TAMIL_FONT}`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "rgba(15, 23, 42, 0.2)";
+  ctx.fillText(zeichen, ursprungX, grundlinieY);
+
+  const skala = Math.max(cssGroesse / 380, 0.6);
+  const schritte = strichfolgenVokale[zeichen] ?? [];
+  schritte.forEach((s, i) => {
+    zeichnePfeil(
+      ctx,
+      {
+        x: ursprungX - metrik.links + (s.x / 100) * metrik.breite,
+        y: grundlinieY - metrik.oben + (s.y / 100) * metrik.hoehe,
+        winkel: s.winkel,
+        nummer: i + 1,
+        punkt: s.punkt,
+      },
+      skala,
+    );
+  });
 }
