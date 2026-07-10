@@ -4,22 +4,28 @@ import { Hausaufgabe } from "../lib/typen";
 
 export interface MeineAufgabe {
   aufgabe: Hausaufgabe;
-  fortschritt: number;
+  fortschritt: number; // richtig beantwortete Fragen über alle Teile
+  gesamt: number; // Summe der Fragen-Anzahlen aller Teile
   erledigt: boolean;
+  erledigtAm: string | null;
+}
+
+export function aufgabenGesamt(aufgabe: Hausaufgabe): number {
+  return aufgabe.teile.reduce((summe, t) => summe + t.anzahl, 0);
 }
 
 // Hausaufgaben des angemeldeten Schülers ("alle" oder direkt zugewiesen)
-// samt eigenem Bearbeitungsstand. zaehleUebung() zählt eine beantwortete
-// Frage auf alle offenen Aufgaben der passenden Übungsgruppe.
+// samt Bearbeitungsstand. Der Fortschritt wird in der Side-Quest-Ansicht
+// (HausaufgabenAnsicht) gezählt, nicht mehr in den freien Übungsmodi.
 export function useHausaufgaben(username: string) {
   const [aufgaben, setAufgaben] = useState<MeineAufgabe[]>([]);
+  const [laden, setLaden] = useState(true);
 
-  useEffect(() => {
+  const neuLaden = useCallback(() => {
     if (!username) return;
-    let aktiv = true;
+    setLaden(true);
     Promise.all([datenquelle.ladeHausaufgaben(), datenquelle.ladeHausaufgabenStatus()])
       .then(([alle, status]) => {
-        if (!aktiv) return;
         const meine = alle.filter(
           (h) => h.zugewiesenAn === "alle" || h.zugewiesenAn === username,
         );
@@ -28,44 +34,49 @@ export function useHausaufgaben(username: string) {
             const s = status.find(
               (x) => x.hausaufgabeId === aufgabe.id && x.username === username,
             );
+            const gesamt = aufgabenGesamt(aufgabe);
             return {
               aufgabe,
               fortschritt: s?.fortschritt ?? 0,
-              erledigt: (s?.fortschritt ?? 0) >= aufgabe.sollAnzahl,
+              gesamt,
+              erledigt: (s?.fortschritt ?? 0) >= gesamt && gesamt > 0,
+              erledigtAm: s?.erledigtAm ?? null,
             };
           }),
         );
       })
       .catch(() => {
-        // ohne Hausaufgaben läuft das Üben normal weiter
-      });
-    return () => {
-      aktiv = false;
-    };
+        // ohne Hausaufgaben läuft das Lernen normal weiter
+      })
+      .finally(() => setLaden(false));
   }, [username]);
 
-  const zaehleUebung = useCallback(
-    (gruppeId: string) => {
-      if (!username) return;
+  useEffect(neuLaden, [neuLaden]);
+
+  // Verbucht richtige Antworten aus der Side-Quest auf eine Aufgabe.
+  const zaehleFortschritt = useCallback(
+    (hausaufgabeId: number, anzahl: number) => {
+      if (!username || anzahl <= 0) return;
       setAufgaben((alt) =>
         alt.map((a) => {
-          if (a.aufgabe.gruppeId !== gruppeId || a.erledigt) return a;
-          const fortschritt = a.fortschritt + 1;
-          const erledigt = fortschritt >= a.aufgabe.sollAnzahl;
+          if (a.aufgabe.id !== hausaufgabeId || a.erledigt) return a;
+          const fortschritt = Math.min(a.fortschritt + anzahl, a.gesamt);
+          const erledigt = fortschritt >= a.gesamt;
+          const erledigtAm = erledigt ? new Date().toISOString() : null;
           void datenquelle
             .speichereHausaufgabenStatus({
-              hausaufgabeId: a.aufgabe.id,
+              hausaufgabeId,
               username,
               fortschritt,
-              erledigtAm: erledigt ? new Date().toISOString() : null,
+              erledigtAm,
             })
             .catch(() => {});
-          return { ...a, fortschritt, erledigt };
+          return { ...a, fortschritt, erledigt, erledigtAm };
         }),
       );
     },
     [username],
   );
 
-  return { aufgaben, zaehleUebung };
+  return { aufgaben, laden, zaehleFortschritt, neuLaden };
 }

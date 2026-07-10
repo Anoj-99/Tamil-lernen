@@ -18,6 +18,10 @@ interface KontoContextWert {
   laden: boolean;
   loginFehler: string | null;
   login(username: string): Promise<void>;
+  // Schüler-Registrierung über den Lehrer-Code (QR) bzw.
+  // Lehrer-Registrierung über den Schul-Code des Schulleiters.
+  loginMitLehrerCode(username: string, lehrerCode: string): Promise<void>;
+  registriereLehrer(username: string, schulCode: string): Promise<void>;
   logout(): void;
   belohne(ep: number): void;
   // Wendet eine reine Punkte-Transformation an (z.B. Challenge verbuchen,
@@ -33,20 +37,37 @@ export function KontoProvider({ children }: { children: ReactNode }) {
   const [laden, setLaden] = useState(true);
   const [loginFehler, setLoginFehler] = useState<string | null>(null);
 
-  const login = useCallback(async (username: string) => {
+  const anmelden = useCallback(async (aktion: () => Promise<Konto>) => {
     setLoginFehler(null);
     try {
-      const neuesKonto = await datenquelle.loginOderAnlegen(username);
-      const stand = await datenquelle.ladePunkte(username);
+      const neuesKonto = await aktion();
+      const stand = await datenquelle.ladePunkte(neuesKonto.username);
       setKonto(neuesKonto);
       setPunkte(stand);
-      localStorage.setItem(SITZUNG_KEY, username);
+      localStorage.setItem(SITZUNG_KEY, neuesKonto.username);
     } catch (fehler) {
       setLoginFehler(
         `Anmeldung fehlgeschlagen: ${fehler instanceof Error ? fehler.message : "unbekannter Fehler"}`,
       );
     }
   }, []);
+
+  const login = useCallback(
+    (username: string) => anmelden(() => datenquelle.loginOderAnlegen(username)),
+    [anmelden],
+  );
+
+  const loginMitLehrerCode = useCallback(
+    (username: string, lehrerCode: string) =>
+      anmelden(() => datenquelle.schuelerMitLehrerCode(username, lehrerCode)),
+    [anmelden],
+  );
+
+  const registriereLehrer = useCallback(
+    (username: string, schulCode: string) =>
+      anmelden(() => datenquelle.lehrerRegistrieren(username, schulCode)),
+    [anmelden],
+  );
 
   const logout = useCallback(() => {
     setKonto(null);
@@ -110,7 +131,18 @@ export function KontoProvider({ children }: { children: ReactNode }) {
 
   return (
     <KontoContext.Provider
-      value={{ konto, punkte, laden, loginFehler, login, logout, belohne, wendePunkteAn }}
+      value={{
+        konto,
+        punkte,
+        laden,
+        loginFehler,
+        login,
+        loginMitLehrerCode,
+        registriereLehrer,
+        logout,
+        belohne,
+        wendePunkteAn,
+      }}
     >
       {children}
     </KontoContext.Provider>

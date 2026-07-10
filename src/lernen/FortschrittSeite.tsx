@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { konsonanten, uebungsgruppen } from "../data/tamilSchrift";
+import { konsonanten } from "../data/tamilSchrift";
 import { datenquelle } from "../lib/datenquelle";
 import { Ampel, ampelFuerFach } from "../lib/punkteLogik";
 import { FehlerEintrag, LeitnerEintrag } from "../lib/typen";
@@ -92,24 +92,25 @@ export default function FortschrittSeite() {
 
   if (!konto) return null;
 
-  const gruppenName = (id: string) =>
-    uebungsgruppen.find((g) => g.id === id)?.name ?? id;
-
   return (
     <div className="flex flex-col gap-5">
       {aufgaben.length > 0 && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
           <h2 className="mb-2 font-semibold">Deine Hausaufgaben</h2>
+          <p className="mb-2 text-xs text-slate-500">
+            Bearbeiten kannst du sie als Side-Quest 📌 auf dem Pfad.
+          </p>
           <ul className="flex flex-col gap-2">
-            {aufgaben.map(({ aufgabe, fortschritt, erledigt }) => (
+            {aufgaben.map(({ aufgabe, fortschritt, gesamt, erledigt }) => (
               <li key={aufgabe.id} className="rounded-xl border border-slate-200 p-3">
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="font-medium">
-                    {gruppenName(aufgabe.gruppeId)} · {aufgabe.sollAnzahl} Fragen
-                    (Erkennen)
+                    {aufgabe.thema} · {gesamt} Fragen
+                    {aufgabe.deadline &&
+                      ` · bis ${formatiereZeitpunkt(aufgabe.deadline)}`}
                   </span>
                   <span className={erledigt ? "font-semibold text-green-700" : "text-slate-500"}>
-                    {Math.min(fortschritt, aufgabe.sollAnzahl)}/{aufgabe.sollAnzahl}
+                    {Math.min(fortschritt, gesamt)}/{gesamt}
                     {erledigt && " ✓ erledigt"}
                   </span>
                 </div>
@@ -117,7 +118,7 @@ export default function FortschrittSeite() {
                   <div
                     className={`h-full rounded-full ${erledigt ? "bg-green-600" : "bg-amber-500"}`}
                     style={{
-                      width: `${Math.min((fortschritt / aufgabe.sollAnzahl) * 100, 100)}%`,
+                      width: `${gesamt > 0 ? Math.min((fortschritt / gesamt) * 100, 100) : 0}%`,
                     }}
                   />
                 </div>

@@ -1,11 +1,36 @@
 // Gemeinsame Typen für Konten, Punkte und Lernstand.
 import { PositionsWert } from "../data/tamilSchrift";
 
-export type Rolle = "lehrer" | "schueler";
+// Rollen-Hierarchie: Admin lädt Schulleiter ein, Schulleiter geben ihren
+// Schul-Code an Lehrer weiter, Lehrer binden Schüler über ihren Lehrer-Code
+// (QR). Konten ohne Schule sind selbstständige Lerner.
+export type Rolle = "admin" | "schulleiter" | "lehrer" | "schueler";
 
 export interface Konto {
   username: string;
   rolle: Rolle;
+  schuleId: number | null;
+  lehrerUsername: string | null; // nur Schüler: der gebundene Lehrer
+  lehrerCode: string | null; // nur Lehrer: eigener Code für Schüler-QR
+  email: string | null; // nur Schulleiter (Einladung durch den Admin)
+}
+
+export function einfachesKonto(username: string, rolle: Rolle): Konto {
+  return {
+    username,
+    rolle,
+    schuleId: null,
+    lehrerUsername: null,
+    lehrerCode: null,
+    email: null,
+  };
+}
+
+export interface Schule {
+  id: number;
+  name: string;
+  schulCode: string; // gibt der Schulleiter an seine Lehrer weiter
+  erstelltAm: string;
 }
 
 export interface PunkteStand {
@@ -46,12 +71,19 @@ export interface LeitnerEintrag {
   falschGesamt: number;
 }
 
+// Ein Teil eines Hausaufgaben-Pakets: eine Pool-Aufgabe mit Fragen-Anzahl.
+export interface HausaufgabenTeil {
+  poolId: string; // Referenz in data/hausaufgabenPool.ts
+  anzahl: number;
+}
+
 export interface Hausaufgabe {
   id: number;
   zugewiesenVon: string;
   zugewiesenAn: string; // "alle" oder ein Benutzername
-  gruppeId: string;
-  sollAnzahl: number;
+  thema: string;
+  deadline: string | null; // ISO-Zeitstempel; danach bleibt sie bearbeitbar
+  teile: HausaufgabenTeil[];
   erstelltAm: string;
 }
 

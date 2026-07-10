@@ -7,9 +7,11 @@
 //    ohne eingerichtetes Backend voll bedienbar.
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
+  einfachesKonto,
   FehlerEintrag,
   Hausaufgabe,
   HausaufgabenStatus,
+  HausaufgabenTeil,
   heuteIso,
   isoWoche,
   Konto,
@@ -23,12 +25,31 @@ import {
   RegelEintrag,
   Rolle,
   SchuelerUebersicht,
+  Schule,
 } from "./typen";
+
+// Kurzer, gut vorlesbarer Code (ohne verwechselbare Zeichen wie 0/O, 1/I).
+export function neuerCode(laenge = 6): string {
+  const zeichen = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < laenge; i++) {
+    code += zeichen[Math.floor(Math.random() * zeichen.length)];
+  }
+  return code;
+}
 
 export interface Datenquelle {
   loginOderAnlegen(username: string): Promise<Konto>;
   ladePunkte(username: string): Promise<PunkteStand>;
   speicherePunkte(username: string, stand: PunkteStand): Promise<void>;
+
+  // Rollen-Hierarchie: Schulen (Admin), Lehrer-Registrierung per Schul-Code,
+  // Schüler-Bindung per Lehrer-Code (QR).
+  ladeSchulen(): Promise<Schule[]>;
+  schuleAnlegen(name: string): Promise<Schule>;
+  schulleiterAnlegen(username: string, schuleId: number, email: string): Promise<void>;
+  lehrerRegistrieren(username: string, schulCode: string): Promise<Konto>;
+  schuelerMitLehrerCode(username: string, lehrerCode: string): Promise<Konto>;
 
   ladeRegeln(): Promise<RegelEintrag[]>;
   speichereRegel(eintrag: RegelEintrag): Promise<void>;
@@ -76,16 +97,126 @@ class SupabaseDatenquelle implements Datenquelle {
     return data;
   }
 
+  private kontoAusZeile(z: Record<string, unknown>): Konto {
+    return {
+      username: String(z.username),
+      rolle: z.rolle as Rolle,
+      schuleId: z.schule_id == null ? null : Number(z.schule_id),
+      lehrerUsername: (z.lehrer_username as string | null) ?? null,
+      lehrerCode: (z.lehrer_code as string | null) ?? null,
+      email: (z.email as string | null) ?? null,
+    };
+  }
+
   async loginOderAnlegen(username: string): Promise<Konto> {
-    const vorhanden = await this.abfrage<{ username: string; rolle: Rolle }[]>(
-      this.client.from("accounts").select("username, rolle").eq("username", username).limit(1),
+    const vorhanden = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("accounts").select("*").eq("username", username).limit(1),
     );
     if (vorhanden && vorhanden.length > 0) {
-      return { username: vorhanden[0].username, rolle: vorhanden[0].rolle };
+      return this.kontoAusZeile(vorhanden[0]);
     }
     await this.abfrage(this.client.from("accounts").insert({ username }));
     await this.abfrage(this.client.from("punkte").insert({ username }));
-    return { username, rolle: "schueler" };
+    return einfachesKonto(username, "schueler");
+  }
+
+  async ladeSchulen(): Promise<Schule[]> {
+    const zeilen = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("schulen").select("*").order("name"),
+    );
+    return (zeilen ?? []).map((z) => ({
+      id: Number(z.id),
+      name: String(z.name),
+      schulCode: String(z.schul_code),
+      erstelltAm: String(z.erstellt_am),
+    }));
+  }
+
+  async schuleAnlegen(name: string): Promise<Schule> {
+    const schulCode = neuerCode();
+    const zeilen = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("schulen").insert({ name, schul_code: schulCode }).select(),
+    );
+    const z = zeilen?.[0];
+    if (!z) throw new Error("Schule konnte nicht angelegt werden");
+    return {
+      id: Number(z.id),
+      name: String(z.name),
+      schulCode: String(z.schul_code),
+      erstelltAm: String(z.erstellt_am),
+    };
+  }
+
+  async schulleiterAnlegen(username: string, schuleId: number, email: string): Promise<void> {
+    await this.abfrage(
+      this.client.from("accounts").upsert({
+        username,
+        rolle: "schulleiter",
+        schule_id: schuleId,
+        email,
+      }),
+    );
+    await this.abfrage(this.client.from("punkte").upsert({ username }));
+  }
+
+  async lehrerRegistrieren(username: string, schulCode: string): Promise<Konto> {
+    const schulen = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("schulen").select("*").eq("schul_code", schulCode).limit(1),
+    );
+    if (!schulen || schulen.length === 0) {
+      throw new Error("Schul-Code nicht gefunden – bitte beim Schulleiter nachfragen.");
+    }
+    // Admin-/Schulleiter-Konten nicht versehentlich herabstufen.
+    const vorhanden = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("accounts").select("*").eq("username", username).limit(1),
+    );
+    if (vorhanden && vorhanden.length > 0) {
+      const rolle = vorhanden[0].rolle as Rolle;
+      if (rolle === "admin" || rolle === "schulleiter") {
+        return this.kontoAusZeile(vorhanden[0]);
+      }
+    }
+    const schuleId = Number(schulen[0].id);
+    const lehrerCode = neuerCode();
+    await this.abfrage(
+      this.client.from("accounts").upsert({
+        username,
+        rolle: "lehrer",
+        schule_id: schuleId,
+        lehrer_code: lehrerCode,
+      }),
+    );
+    await this.abfrage(this.client.from("punkte").upsert({ username }));
+    const konto = einfachesKonto(username, "lehrer");
+    return { ...konto, schuleId, lehrerCode };
+  }
+
+  async schuelerMitLehrerCode(username: string, lehrerCode: string): Promise<Konto> {
+    const lehrer = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("accounts").select("*").eq("lehrer_code", lehrerCode).limit(1),
+    );
+    if (!lehrer || lehrer.length === 0) {
+      throw new Error("Lehrer-Code nicht gefunden – bitte den QR-Code neu scannen.");
+    }
+    const l = this.kontoAusZeile(lehrer[0]);
+    // Nur Schüler-Konten binden – Lehrer/Schulleiter/Admin nicht herabstufen.
+    const vorhanden = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("accounts").select("*").eq("username", username).limit(1),
+    );
+    if (vorhanden && vorhanden.length > 0 && (vorhanden[0].rolle as Rolle) !== "schueler") {
+      return this.kontoAusZeile(vorhanden[0]);
+    }
+    await this.abfrage(
+      this.client.from("accounts").upsert({
+        username,
+        rolle: "schueler",
+        schule_id: l.schuleId,
+        lehrer_username: l.username,
+      }),
+    );
+    await this.abfrage(this.client.from("punkte").upsert({ username }));
+    const konto = einfachesKonto(username, "schueler");
+    return { ...konto, schuleId: l.schuleId, lehrerUsername: l.username };
   }
 
   async ladePunkte(username: string): Promise<PunkteStand> {
@@ -215,8 +346,8 @@ class SupabaseDatenquelle implements Datenquelle {
   }
 
   async ladeAlleSchueler(): Promise<SchuelerUebersicht[]> {
-    const konten = await this.abfrage<{ username: string; rolle: Rolle }[]>(
-      this.client.from("accounts").select("username, rolle").order("username"),
+    const konten = await this.abfrage<Record<string, unknown>[]>(
+      this.client.from("accounts").select("*").order("username"),
     );
     const punkte = await this.abfrage<Record<string, unknown>[]>(
       this.client.from("punkte").select("*"),
@@ -237,8 +368,8 @@ class SupabaseDatenquelle implements Datenquelle {
       });
     }
     return (konten ?? []).map((k) => ({
-      konto: { username: k.username, rolle: k.rolle },
-      punkte: punkteNachName.get(k.username) ?? leererPunkteStand(),
+      konto: this.kontoAusZeile(k),
+      punkte: punkteNachName.get(String(k.username)) ?? leererPunkteStand(),
     }));
   }
 
@@ -247,8 +378,12 @@ class SupabaseDatenquelle implements Datenquelle {
       this.client.from("hausaufgaben").insert({
         zugewiesen_von: h.zugewiesenVon,
         zugewiesen_an: h.zugewiesenAn,
-        gruppe_id: h.gruppeId,
-        soll_anzahl: h.sollAnzahl,
+        thema: h.thema,
+        deadline: h.deadline,
+        aufgaben: h.teile,
+        // Legacy-Spalten (nicht mehr genutzt, aber not null in alten Schemas).
+        gruppe_id: h.teile[0]?.poolId ?? "",
+        soll_anzahl: h.teile.reduce((summe, t) => summe + t.anzahl, 0),
       }),
     );
   }
@@ -265,8 +400,12 @@ class SupabaseDatenquelle implements Datenquelle {
       id: Number(z.id),
       zugewiesenVon: String(z.zugewiesen_von),
       zugewiesenAn: String(z.zugewiesen_an),
-      gruppeId: String(z.gruppe_id),
-      sollAnzahl: Number(z.soll_anzahl),
+      thema: String(z.thema ?? "Übung"),
+      deadline: (z.deadline as string | null) ?? null,
+      // Alte Zeilen (vor dem Editor) haben nur gruppe_id/soll_anzahl.
+      teile: Array.isArray(z.aufgaben)
+        ? (z.aufgaben as HausaufgabenTeil[])
+        : [{ poolId: `gruppe:${String(z.gruppe_id)}`, anzahl: Number(z.soll_anzahl ?? 20) }],
       erstelltAm: String(z.erstellt_am),
     }));
   }
@@ -418,7 +557,8 @@ class SupabaseDatenquelle implements Datenquelle {
 // ---------------------------------------------------------------------------
 
 interface LokaleDb {
-  accounts: Record<string, { rolle: Rolle }>;
+  accounts: Record<string, Omit<Konto, "username">>;
+  schulen: Schule[];
   punkte: Record<string, PunkteStand>;
   regeln: Record<string, RegelEintrag>;
   fehler: FehlerEintrag[];
@@ -438,6 +578,7 @@ class LokaleDatenquelle implements Datenquelle {
   private lade(): LokaleDb {
     const leer: LokaleDb = {
       accounts: {},
+      schulen: [],
       punkte: {},
       regeln: {},
       fehler: [],
@@ -468,15 +609,97 @@ class LokaleDatenquelle implements Datenquelle {
   async loginOderAnlegen(username: string): Promise<Konto> {
     const db = this.lade();
     if (!db.accounts[username]) {
-      // Im Test-Modus wird der Name "lehrer" automatisch Lehrer, damit sich
-      // das Dashboard ohne Datenbank ausprobieren lässt.
-      db.accounts[username] = {
-        rolle: username.toLowerCase() === "lehrer" ? "lehrer" : "schueler",
-      };
+      // Im Test-Modus bekommen die Namen "lehrer", "schulleiter" und "admin"
+      // automatisch die passende Rolle, damit sich alles ohne Datenbank
+      // ausprobieren lässt.
+      const name = username.toLowerCase();
+      const rolle: Rolle =
+        name === "lehrer"
+          ? "lehrer"
+          : name === "schulleiter"
+            ? "schulleiter"
+            : name === "admin"
+              ? "admin"
+              : "schueler";
+      const konto = einfachesKonto(username, rolle);
+      if (rolle === "lehrer") konto.lehrerCode = neuerCode();
+      const { username: _, ...rest } = konto;
+      db.accounts[username] = rest;
       db.punkte[username] = leererPunkteStand();
       this.speichere(db);
     }
-    return { username, rolle: db.accounts[username].rolle };
+    // Mit Standardwerten mischen, damit alte lokale Konten die neuen
+    // Rollen-Felder nachträglich bekommen.
+    return { ...einfachesKonto(username, "schueler"), ...db.accounts[username], username };
+  }
+
+  async ladeSchulen(): Promise<Schule[]> {
+    return this.lade().schulen;
+  }
+
+  async schuleAnlegen(name: string): Promise<Schule> {
+    const db = this.lade();
+    const schule: Schule = {
+      id: db.naechsteId++,
+      name,
+      schulCode: neuerCode(),
+      erstelltAm: new Date().toISOString(),
+    };
+    db.schulen.push(schule);
+    this.speichere(db);
+    return schule;
+  }
+
+  async schulleiterAnlegen(username: string, schuleId: number, email: string): Promise<void> {
+    const db = this.lade();
+    const konto = einfachesKonto(username, "schulleiter");
+    konto.schuleId = schuleId;
+    konto.email = email;
+    const { username: _, ...rest } = konto;
+    db.accounts[username] = rest;
+    db.punkte[username] = db.punkte[username] ?? leererPunkteStand();
+    this.speichere(db);
+  }
+
+  async lehrerRegistrieren(username: string, schulCode: string): Promise<Konto> {
+    const db = this.lade();
+    const schule = db.schulen.find((s) => s.schulCode === schulCode);
+    if (!schule) {
+      throw new Error("Schul-Code nicht gefunden – bitte beim Schulleiter nachfragen.");
+    }
+    const bestehend = db.accounts[username];
+    if (bestehend && (bestehend.rolle === "admin" || bestehend.rolle === "schulleiter")) {
+      return { ...einfachesKonto(username, "schueler"), ...bestehend, username };
+    }
+    const konto = einfachesKonto(username, "lehrer");
+    konto.schuleId = schule.id;
+    konto.lehrerCode = neuerCode();
+    const { username: _, ...rest } = konto;
+    db.accounts[username] = rest;
+    db.punkte[username] = db.punkte[username] ?? leererPunkteStand();
+    this.speichere(db);
+    return konto;
+  }
+
+  async schuelerMitLehrerCode(username: string, lehrerCode: string): Promise<Konto> {
+    const db = this.lade();
+    const eintrag = Object.entries(db.accounts).find(([, k]) => k.lehrerCode === lehrerCode);
+    if (!eintrag) {
+      throw new Error("Lehrer-Code nicht gefunden – bitte den QR-Code neu scannen.");
+    }
+    const [lehrerName, lehrer] = eintrag;
+    const bestehend = db.accounts[username];
+    if (bestehend && bestehend.rolle !== "schueler") {
+      return { ...einfachesKonto(username, "schueler"), ...bestehend, username };
+    }
+    const konto = einfachesKonto(username, "schueler");
+    konto.schuleId = lehrer.schuleId;
+    konto.lehrerUsername = lehrerName;
+    const { username: _, ...rest } = konto;
+    db.accounts[username] = rest;
+    db.punkte[username] = db.punkte[username] ?? leererPunkteStand();
+    this.speichere(db);
+    return konto;
   }
 
   async ladePunkte(username: string): Promise<PunkteStand> {
@@ -543,7 +766,7 @@ class LokaleDatenquelle implements Datenquelle {
     return Object.entries(db.accounts)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([username, konto]) => ({
-        konto: { username, rolle: konto.rolle },
+        konto: { ...einfachesKonto(username, "schueler"), ...konto, username },
         punkte: db.punkte[username] ?? leererPunkteStand(),
       }));
   }
@@ -566,7 +789,19 @@ class LokaleDatenquelle implements Datenquelle {
   }
 
   async ladeHausaufgaben(): Promise<Hausaufgabe[]> {
-    return this.lade().hausaufgaben;
+    // Alte lokale Einträge (vor dem Editor) auf das Paket-Modell heben.
+    const roh = this.lade().hausaufgaben as (Hausaufgabe & {
+      gruppeId?: string;
+      sollAnzahl?: number;
+    })[];
+    return roh.map((h) => ({
+      ...h,
+      thema: h.thema ?? "Übung",
+      deadline: h.deadline ?? null,
+      teile:
+        h.teile ??
+        (h.gruppeId ? [{ poolId: `gruppe:${h.gruppeId}`, anzahl: h.sollAnzahl ?? 20 }] : []),
+    }));
   }
 
   async ladeHausaufgabenStatus(): Promise<HausaufgabenStatus[]> {

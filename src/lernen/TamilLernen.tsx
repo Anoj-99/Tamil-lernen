@@ -5,9 +5,11 @@ import {
   uebungsgruppen,
 } from "../data/tamilSchrift";
 import { istLokalerModus } from "../lib/datenquelle";
+import AdminBereich from "./AdminBereich";
 import BibliothekSeite from "./BibliothekSeite";
 import DailyChallenge from "./DailyChallenge";
 import ErkennenModus from "./ErkennenModus";
+import SchulleiterBereich from "./SchulleiterBereich";
 import FortschrittSeite from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
 import LehrerBereich from "./LehrerBereich";
@@ -29,7 +31,9 @@ type Modus =
   | "position"
   | "pruefung"
   | "fortschritt"
-  | "lehrer";
+  | "lehrer"
+  | "schule"
+  | "admin";
 
 const MODI: { id: Modus; name: string }[] = [
   { id: "pfad", name: "Pfad" },
@@ -61,13 +65,18 @@ export default function TamilLernen() {
     [gruppenId],
   );
 
-  const sichtbareModi = useMemo(
-    () =>
-      konto?.rolle === "lehrer"
-        ? [...MODI, { id: "lehrer" as Modus, name: "Lehrer" }]
-        : MODI,
-    [konto],
-  );
+  const sichtbareModi = useMemo(() => {
+    switch (konto?.rolle) {
+      case "lehrer":
+        return [...MODI, { id: "lehrer" as Modus, name: "Lehrer" }];
+      case "schulleiter":
+        return [...MODI, { id: "schule" as Modus, name: "Schule" }];
+      case "admin":
+        return [...MODI, { id: "admin" as Modus, name: "Admin" }];
+      default:
+        return MODI;
+    }
+  }, [konto]);
 
   // Nach einem Benutzerwechsel nicht in einem Tab hängen bleiben, den es
   // für die neue Rolle gar nicht gibt (z.B. "Lehrer" nach Schüler-Login).
@@ -102,9 +111,13 @@ export default function TamilLernen() {
               <span className="rounded-full border border-slate-300 bg-white px-3 py-1 font-medium">
                 {konto.username}
               </span>
-              {konto.rolle === "lehrer" && (
+              {konto.rolle !== "schueler" && (
                 <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
-                  Lehrer
+                  {konto.rolle === "lehrer"
+                    ? "Lehrer"
+                    : konto.rolle === "schulleiter"
+                      ? "Schulleiter"
+                      : "Admin"}
                 </span>
               )}
               <button
@@ -214,7 +227,6 @@ export default function TamilLernen() {
           {modus === "erkennen" && (
             <ErkennenModus
               key={gruppe.id}
-              gruppenId={gruppe.id}
               kombinationen={gruppe.kombinationen}
               reihenfolge={reihenfolge}
             />
@@ -242,6 +254,8 @@ export default function TamilLernen() {
               zuruecksetzen={zuruecksetzen}
             />
           )}
+          {modus === "schule" && konto.rolle === "schulleiter" && <SchulleiterBereich />}
+          {modus === "admin" && konto.rolle === "admin" && <AdminBereich />}
         </main>
 
         <footer className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">

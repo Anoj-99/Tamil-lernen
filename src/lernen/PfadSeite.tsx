@@ -4,13 +4,16 @@ import { Level, levels } from "../data/levelPlan";
 import { datenquelle } from "../lib/datenquelle";
 import { LektionFortschritt, LevelFortschritt } from "../lib/typen";
 import BossTest from "./BossTest";
+import HausaufgabenAnsicht from "./HausaufgabenAnsicht";
 import { useKonto } from "./KontoContext";
 import LektionAnsicht from "./LektionAnsicht";
+import { MeineAufgabe, useHausaufgaben } from "./useHausaufgaben";
 
 type Ansicht =
   | { typ: "pfad" }
   | { typ: "lektion"; lektion: Lektion }
-  | { typ: "boss"; level: Level };
+  | { typ: "boss"; level: Level }
+  | { typ: "hausaufgabe"; aufgabeId: number };
 
 type KnotenStatus = "gesperrt" | "offen" | "fertig";
 
@@ -113,6 +116,11 @@ interface Props {
 export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props = {}) {
   const { konto } = useKonto();
   const [ansicht, setAnsicht] = useState<Ansicht>({ typ: "pfad" });
+  const {
+    aufgaben: hausaufgaben,
+    zaehleFortschritt,
+    neuLaden: hausaufgabenNeuLaden,
+  } = useHausaufgaben(konto?.username ?? "");
 
   useEffect(() => {
     if (!sprungLektionId) return;
@@ -186,9 +194,61 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
     );
   }
 
+  if (ansicht.typ === "hausaufgabe") {
+    const meine = hausaufgaben.find((a) => a.aufgabe.id === ansicht.aufgabeId);
+    if (meine) {
+      return (
+        <HausaufgabenAnsicht
+          meineAufgabe={meine}
+          zurueck={() => {
+            setAnsicht({ typ: "pfad" });
+            hausaufgabenNeuLaden();
+          }}
+          zaehleFortschritt={zaehleFortschritt}
+        />
+      );
+    }
+  }
+
   if (laden) {
     return <p className="text-center text-slate-500">Lade Pfad …</p>;
   }
+
+  // Hausaufgaben hängen als Abzweigung (Side-Quest) am aktiven Level –
+  // optional, der Hauptpfad läuft daran vorbei.
+  const aktivesLevelId =
+    levels.find((l) => levelStatus.get(l.id) === "offen")?.id ??
+    levels[levels.length - 1]?.id;
+
+  const sideQuest = (meine: MeineAufgabe) => (
+    <div key={meine.aufgabe.id} className="relative ml-10 flex items-center gap-3">
+      <div aria-hidden="true" className="h-0.5 w-6 bg-slate-300" />
+      <button
+        type="button"
+        onClick={() => setAnsicht({ typ: "hausaufgabe", aufgabeId: meine.aufgabe.id })}
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 text-lg transition-transform hover:scale-105 ${
+          meine.erledigt
+            ? "border-green-600 bg-green-100"
+            : "border-dashed border-blue-400 bg-blue-50"
+        }`}
+        aria-label={`Side-Quest: ${meine.aufgabe.thema}`}
+      >
+        {meine.erledigt ? "✓" : "📌"}
+      </button>
+      <div>
+        <p className="text-sm font-medium text-slate-800">
+          Side-Quest: {meine.aufgabe.thema}
+        </p>
+        <p className="text-xs text-slate-500">
+          Hausaufgabe von {meine.aufgabe.zugewiesenVon} · {meine.fortschritt}/
+          {meine.gesamt}
+          {meine.aufgabe.deadline &&
+            ` · bis ${new Date(meine.aufgabe.deadline).toLocaleDateString("de-DE")}`}{" "}
+          · optional
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -247,6 +307,7 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
                   boss
                 />
               </div>
+              {level.id === aktivesLevelId && hausaufgaben.map(sideQuest)}
             </div>
           </section>
         );

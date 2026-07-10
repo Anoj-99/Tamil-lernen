@@ -1,15 +1,22 @@
+import QRCode from "qrcode";
 import { useEffect, useState } from "react";
+import {
+  hausaufgabenPool,
+  PoolAufgabe,
+  poolAufgabeById,
+  poolThemen,
+} from "../data/hausaufgabenPool";
 import { Lektion, LektionBuchstabe, lektionen } from "../data/lektionen";
 import {
   Konsonant,
   konsonanten,
   PositionsWert,
-  uebungsgruppen,
 } from "../data/tamilSchrift";
 import { datenquelle } from "../lib/datenquelle";
 import { levelAus } from "../lib/punkteLogik";
 import {
   FehlerEintrag,
+  Konto,
   LeitnerEintrag,
   LektionInhaltUeberschreibung,
   RegelEintrag,
@@ -22,7 +29,7 @@ import {
 } from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
 import { anwenden } from "./useLektionInhalt";
-import { Hausaufgabe, HausaufgabenStatus } from "../lib/typen";
+import { Hausaufgabe, HausaufgabenStatus, HausaufgabenTeil } from "../lib/typen";
 
 const POSITION_OPTIONEN: [PositionsWert, string][] = [
   ["nur_mitte", "Nur Mitte"],
@@ -485,6 +492,10 @@ function LektionenVerwaltung() {
 // Tab 4: Hausaufgaben zuweisen und verfolgen
 // ---------------------------------------------------------------------------
 
+// Der Editor: Pool-Aufgaben (nach Themen sortiert) zu einem Paket
+// zusammenstellen, Deadline setzen, zuweisen. Nach der Deadline bleibt die
+// Aufgabe für Schüler bearbeitbar – die Liste zeigt aber, ob sie pünktlich
+// erledigt wurde.
 function HausaufgabenVerwaltung({
   schueler,
   lehrerName,
@@ -494,31 +505,58 @@ function HausaufgabenVerwaltung({
 }) {
   const [aufgaben, setAufgaben] = useState<Hausaufgabe[]>([]);
   const [status, setStatus] = useState<HausaufgabenStatus[]>([]);
-  const [gruppeId, setGruppeId] = useState(uebungsgruppen[0].id as string);
-  const [anzahl, setAnzahl] = useState(20);
+  const [paket, setPaket] = useState<HausaufgabenTeil[]>([]);
   const [fuer, setFuer] = useState("alle");
+  const [deadline, setDeadline] = useState("");
   const [legtAn, setLegtAn] = useState(false);
 
   const laden = () => {
     Promise.all([datenquelle.ladeHausaufgaben(), datenquelle.ladeHausaufgabenStatus()])
       .then(([a, s]) => {
-        setAufgaben(a);
+        setAufgaben(a.filter((h) => h.zugewiesenVon === lehrerName));
         setStatus(s);
       })
       .catch(() => {});
   };
 
-  useEffect(laden, []);
+  useEffect(laden, [lehrerName]);
+
+  const imPaket = (poolId: string) => paket.some((t) => t.poolId === poolId);
+
+  const hinzufuegen = (aufgabe: PoolAufgabe) => {
+    if (imPaket(aufgabe.id)) return;
+    setPaket((alt) => [...alt, { poolId: aufgabe.id, anzahl: aufgabe.standardAnzahl }]);
+  };
+
+  const entfernenAusPaket = (poolId: string) => {
+    setPaket((alt) => alt.filter((t) => t.poolId !== poolId));
+  };
+
+  const anzahlSetzen = (poolId: string, anzahl: number) => {
+    setPaket((alt) =>
+      alt.map((t) => (t.poolId === poolId ? { ...t, anzahl: Math.max(1, anzahl) } : t)),
+    );
+  };
+
+  // Thema des Pakets: das gemeinsame Thema der Bausteine, sonst "Gemischt".
+  const paketThema = () => {
+    const themen = [...new Set(paket.map((t) => poolAufgabeById(t.poolId)?.thema ?? ""))];
+    return themen.length === 1 && themen[0] ? themen[0] : "Gemischtes Paket";
+  };
 
   const anlegen = async () => {
+    if (paket.length === 0) return;
     setLegtAn(true);
     try {
       await datenquelle.hausaufgabeAnlegen({
         zugewiesenVon: lehrerName,
         zugewiesenAn: fuer,
-        gruppeId,
-        sollAnzahl: anzahl,
+        thema: paketThema(),
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+        teile: paket,
       });
+      setPaket([]);
+      setDeadline("");
       laden();
     } finally {
       setLegtAn(false);
@@ -530,36 +568,84 @@ function HausaufgabenVerwaltung({
     laden();
   };
 
-  const gruppenName = (id: string) =>
-    uebungsgruppen.find((g) => g.id === id)?.name ?? id;
   const nurSchueler = schueler.filter((s) => s.konto.rolle === "schueler");
 
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-slate-200 p-3">
-        <p className="mb-2 text-sm font-medium text-slate-700">Neue Hausaufgabe</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={gruppeId}
-            onChange={(e) => setGruppeId(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
-            aria-label="Übungsgruppe"
-          >
-            {uebungsgruppen.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
+        <p className="mb-1 text-sm font-medium text-slate-700">Aufgaben-Pool</p>
+        <p className="mb-2 text-xs text-slate-500">
+          Stelle aus dem Pool ein Übungspaket zusammen – sortiert nach Themen.
+        </p>
+        <div className="flex flex-col gap-2">
+          {poolThemen.map((thema) => (
+            <details key={thema} className="rounded-lg border border-slate-200">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-slate-700">
+                {thema}
+              </summary>
+              <ul className="flex flex-col gap-1 px-3 pb-2">
+                {hausaufgabenPool
+                  .filter((p) => p.thema === thema)
+                  .map((p) => (
+                    <li key={p.id} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1">{p.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => hinzufuegen(p)}
+                        disabled={imPaket(p.id)}
+                        className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:text-slate-300"
+                      >
+                        {imPaket(p.id) ? "Im Paket" : "+ Hinzufügen"}
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 p-3">
+        <p className="mb-2 text-sm font-medium text-slate-700">
+          Neues Paket ({paket.length} {paket.length === 1 ? "Baustein" : "Bausteine"})
+        </p>
+        {paket.length === 0 ? (
+          <p className="text-xs text-slate-500">
+            Füge oben Aufgaben aus dem Pool hinzu.
+          </p>
+        ) : (
+          <ul className="mb-2 flex flex-col gap-1.5">
+            {paket.map((t) => (
+              <li key={t.poolId} className="flex items-center gap-2 text-sm">
+                <span className="flex-1">{poolAufgabeById(t.poolId)?.name ?? t.poolId}</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={t.anzahl}
+                  onChange={(e) => anzahlSetzen(t.poolId, Number(e.target.value) || 1)}
+                  className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  aria-label={`Fragen für ${poolAufgabeById(t.poolId)?.name}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => entfernenAusPaket(t.poolId)}
+                  className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-600"
+                >
+                  ×
+                </button>
+              </li>
             ))}
-          </select>
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-1.5 text-sm text-slate-600">
-            Fragen:
+            Deadline:
             <input
-              type="number"
-              min={5}
-              max={200}
-              value={anzahl}
-              onChange={(e) => setAnzahl(Number(e.target.value) || 20)}
-              className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              type="datetime-local"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
             />
           </label>
           <select
@@ -578,14 +664,15 @@ function HausaufgabenVerwaltung({
           <button
             type="button"
             onClick={anlegen}
-            disabled={legtAn}
+            disabled={legtAn || paket.length === 0}
             className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white disabled:bg-slate-300"
           >
-            Zuweisen
+            Paket zuweisen
           </button>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          Gezählt werden beantwortete Fragen im Erkennen-Modus der gewählten Gruppe.
+          Die Aufgabe erscheint bei den Schülern als Side-Quest 📌 auf dem
+          Lernpfad – optional für den Spielfortschritt.
         </p>
       </div>
 
@@ -594,6 +681,7 @@ function HausaufgabenVerwaltung({
       ) : (
         <div className="flex flex-col gap-2">
           {aufgaben.map((a) => {
+            const gesamt = a.teile.reduce((summe, t) => summe + t.anzahl, 0);
             const betroffene =
               a.zugewiesenAn === "alle"
                 ? nurSchueler.map((s) => s.konto.username)
@@ -602,8 +690,14 @@ function HausaufgabenVerwaltung({
               <div key={a.id} className="rounded-xl border border-slate-200 p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="flex-1 text-sm font-medium">
-                    {gruppenName(a.gruppeId)} · {a.sollAnzahl} Fragen ·{" "}
+                    {a.thema} · {gesamt} Fragen ·{" "}
                     {a.zugewiesenAn === "alle" ? "alle Schüler" : a.zugewiesenAn}
+                    {a.deadline && (
+                      <span className="text-slate-500">
+                        {" "}
+                        · bis {formatiereZeitpunkt(a.deadline)}
+                      </span>
+                    )}
                   </span>
                   <button
                     type="button"
@@ -613,25 +707,39 @@ function HausaufgabenVerwaltung({
                     Entfernen
                   </button>
                 </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {a.teile
+                    .map((t) => `${poolAufgabeById(t.poolId)?.name ?? t.poolId} (${t.anzahl})`)
+                    .join(" · ")}
+                </p>
                 <ul className="mt-2 flex flex-col gap-1">
                   {betroffene.map((name) => {
                     const s = status.find(
                       (x) => x.hausaufgabeId === a.id && x.username === name,
                     );
-                    const fortschritt = Math.min(s?.fortschritt ?? 0, a.sollAnzahl);
-                    const fertig = fortschritt >= a.sollAnzahl;
+                    const fortschritt = Math.min(s?.fortschritt ?? 0, gesamt);
+                    const fertig = gesamt > 0 && fortschritt >= gesamt;
+                    const puenktlich =
+                      fertig && a.deadline && s?.erledigtAm
+                        ? s.erledigtAm <= a.deadline
+                        : null;
                     return (
                       <li key={name} className="flex items-center gap-2 text-sm">
                         <span className="w-28 truncate text-slate-600">{name}</span>
                         <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
                           <div
                             className={`h-full rounded-full ${fertig ? "bg-green-600" : "bg-amber-500"}`}
-                            style={{ width: `${(fortschritt / a.sollAnzahl) * 100}%` }}
+                            style={{ width: `${gesamt > 0 ? (fortschritt / gesamt) * 100 : 0}%` }}
                           />
                         </div>
-                        <span className="w-16 text-right text-xs text-slate-500">
-                          {fortschritt}/{a.sollAnzahl}
-                          {fertig && " ✓"}
+                        <span className="w-28 text-right text-xs text-slate-500">
+                          {fortschritt}/{gesamt}
+                          {fertig &&
+                            (puenktlich === null
+                              ? " ✓"
+                              : puenktlich
+                                ? " ✓ pünktlich"
+                                : " ✓ verspätet")}
                         </span>
                       </li>
                     );
@@ -650,19 +758,67 @@ function HausaufgabenVerwaltung({
 // Lehrer-Dashboard
 // ---------------------------------------------------------------------------
 
+// Der Lehrer-Code als Text + QR: Schüler scannen ihn vor Ort mit der
+// Handy-Kamera; der QR enthält den Anmelde-Link mit ?code=…, wodurch neue
+// Konten automatisch diesem Lehrer (und seiner Schule) zugeordnet werden.
+function LehrerCodeKarte({ konto }: { konto: Konto }) {
+  const [qrBild, setQrBild] = useState<string>("");
+
+  useEffect(() => {
+    if (!konto.lehrerCode) return;
+    const url = `${window.location.origin}${window.location.pathname}?code=${konto.lehrerCode}`;
+    QRCode.toDataURL(url, { width: 240, margin: 1 })
+      .then(setQrBild)
+      .catch(() => {});
+  }, [konto.lehrerCode]);
+
+  if (!konto.lehrerCode) {
+    return (
+      <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        Für dieses Lehrer-Konto ist noch kein Lehrer-Code hinterlegt.
+        Registriere dich einmalig über „Ich bin Lehrer“ mit dem Schul-Code
+        deines Schulleiters, um einen QR-Code für deine Schüler zu erhalten.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+      <p className="text-sm font-medium text-slate-700">Dein Lehrer-Code für Schüler</p>
+      <p className="mt-1 font-mono text-2xl font-bold tracking-widest">{konto.lehrerCode}</p>
+      {qrBild && (
+        <img
+          src={qrBild}
+          alt={`QR-Code für Lehrer-Code ${konto.lehrerCode}`}
+          className="mx-auto mt-2 h-40 w-40 rounded-lg border border-slate-200 bg-white"
+        />
+      )}
+      <p className="mt-2 text-xs text-slate-500">
+        Schüler scannen den QR-Code mit der Handy-Kamera und werden bei der
+        Anmeldung automatisch deiner Klasse zugeordnet.
+      </p>
+    </div>
+  );
+}
+
 export default function LehrerBereich({ regeln, aktualisiere, zuruecksetzen }: Props) {
   const { konto } = useKonto();
   const [tab, setTab] = useState<LehrerTab>("regeln");
-  const [schueler, setSchueler] = useState<SchuelerUebersicht[]>([]);
+  const [alleKonten, setAlleKonten] = useState<SchuelerUebersicht[]>([]);
 
   useEffect(() => {
     datenquelle
       .ladeAlleSchueler()
-      .then(setSchueler)
+      .then(setAlleKonten)
       .catch(() => {});
   }, []);
 
   if (!konto || konto.rolle !== "lehrer") return null;
+
+  // Nur die eigene Klasse (per Lehrer-Code gebundene Schüler); solange noch
+  // niemand gebunden ist, alle Schüler anzeigen (Übergangsphase).
+  const eigene = alleKonten.filter((s) => s.konto.lehrerUsername === konto.username);
+  const schueler = eigene.length > 0 ? eigene : alleKonten;
 
   return (
     <div className="flex flex-col gap-4">
@@ -712,7 +868,18 @@ export default function LehrerBereich({ regeln, aktualisiere, zuruecksetzen }: P
           </div>
         )}
         {tab === "lektionen" && <LektionenVerwaltung />}
-        {tab === "schueler" && <SchuelerListe schueler={schueler} />}
+        {tab === "schueler" && (
+          <>
+            <LehrerCodeKarte konto={konto} />
+            {eigene.length === 0 && alleKonten.length > 0 && (
+              <p className="mb-2 text-xs text-slate-400">
+                Noch keine Schüler per Lehrer-Code gebunden – es werden alle
+                Konten angezeigt.
+              </p>
+            )}
+            <SchuelerListe schueler={schueler} />
+          </>
+        )}
         {tab === "hausaufgaben" && (
           <HausaufgabenVerwaltung schueler={schueler} lehrerName={konto.username} />
         )}
