@@ -18,3 +18,10 @@ export function sprichBuchstabeUndWort(buchstabe: string, beispielwort: string):
   window.speechSynthesis.speak(utterance(buchstabe, 0.75));
   window.speechSynthesis.speak(utterance(beispielwort, 0.9));
 }
+
+// Spricht einen einzelnen Text (Bibliothek, Daily Challenge).
+export function sprich(text: string, rate = 0.75): void {
+  if (!sprachausgabeVerfuegbar) return;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance(text, rate));
+}

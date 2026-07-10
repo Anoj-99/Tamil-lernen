@@ -5,6 +5,7 @@ import {
   uebungsgruppen,
 } from "../data/tamilSchrift";
 import { istLokalerModus } from "../lib/datenquelle";
+import BibliothekSeite from "./BibliothekSeite";
 import ErkennenModus from "./ErkennenModus";
 import FortschrittSeite from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
@@ -20,6 +21,7 @@ import { useRegeln } from "./useRegeln";
 
 type Modus =
   | "pfad"
+  | "bibliothek"
   | "erkennen"
   | "nachzeichnen"
   | "position"
@@ -29,6 +31,7 @@ type Modus =
 
 const MODI: { id: Modus; name: string }[] = [
   { id: "pfad", name: "Pfad" },
+  { id: "bibliothek", name: "Bibliothek" },
   { id: "erkennen", name: "Erkennen" },
   { id: "nachzeichnen", name: "Nachzeichnen" },
   { id: "position", name: "Position-Check" },
@@ -47,6 +50,8 @@ export default function TamilLernen() {
   const [modus, setModus] = useState<Modus>("pfad");
   const [gruppenId, setGruppenId] = useState<GruppenId>("vallinam_alle");
   const [reihenfolge, setReihenfolge] = useState<Reihenfolge>("zufaellig");
+  // Deep-Link aus der Bibliothek: Lektion, die der Pfad direkt öffnen soll.
+  const [sprungLektionId, setSprungLektionId] = useState<string | null>(null);
 
   const gruppe = useMemo(
     () => uebungsgruppen.find((g) => g.id === gruppenId) ?? uebungsgruppen[0],
@@ -188,7 +193,20 @@ export default function TamilLernen() {
         )}
 
         <main>
-          {modus === "pfad" && <PfadSeite />}
+          {modus === "pfad" && (
+            <PfadSeite
+              sprungLektionId={sprungLektionId}
+              sprungVerbraucht={() => setSprungLektionId(null)}
+            />
+          )}
+          {modus === "bibliothek" && (
+            <BibliothekSeite
+              oeffneLektion={(lektionId) => {
+                setSprungLektionId(lektionId);
+                setModus("pfad");
+              }}
+            />
+          )}
           {modus === "erkennen" && (
             <ErkennenModus
               key={gruppe.id}

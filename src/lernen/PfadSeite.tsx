@@ -100,12 +100,26 @@ function KnotenKreis({
   );
 }
 
+interface Props {
+  // Deep-Link aus der Bibliothek: diese Lektion direkt öffnen (Instant
+  // Review – unabhängig vom Freischalt-Status des Pfads).
+  sprungLektionId?: string | null;
+  sprungVerbraucht?: () => void;
+}
+
 // Der Lernpfad (Dashboard): Level mit je 3 Lektionen und einem Boss-Test
 // als Gatekeeper, vertikal von oben nach unten. Gesperrte Knoten öffnen
 // sich erst, wenn der vorherige Schritt gemeistert ist.
-export default function PfadSeite() {
+export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props = {}) {
   const { konto } = useKonto();
   const [ansicht, setAnsicht] = useState<Ansicht>({ typ: "pfad" });
+
+  useEffect(() => {
+    if (!sprungLektionId) return;
+    const lektion = lektionById(sprungLektionId);
+    if (lektion) setAnsicht({ typ: "lektion", lektion });
+    sprungVerbraucht?.();
+  }, [sprungLektionId, sprungVerbraucht]);
   const [lektionFortschritt, setLektionFortschritt] = useState<LektionFortschritt[]>([]);
   const [levelFortschritt, setLevelFortschritt] = useState<LevelFortschritt[]>([]);
   const [laden, setLaden] = useState(true);
