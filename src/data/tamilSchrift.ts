@@ -282,8 +282,13 @@ export interface StrichSchritt {
   punkt?: boolean;
 }
 
-// Strichfolgen für die eigenständigen Vokale.
+// Strichfolgen für die eigenständigen Vokale (plus Ayutham ஃ: drei Punkte).
 export const strichfolgenVokale: Record<string, StrichSchritt[]> = {
+  ஃ: [
+    { x: 20, y: 15, winkel: 0, punkt: true },
+    { x: 20, y: 85, winkel: 0, punkt: true },
+    { x: 80, y: 50, winkel: 0, punkt: true },
+  ],
   அ: [
     { x: 30, y: 30, winkel: 180 },
     { x: 55, y: 20, winkel: 90 },

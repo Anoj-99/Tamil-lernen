@@ -230,9 +230,19 @@ export function zeichneVorlage(
   }
 }
 
-// Wie zeichneVorlage, aber für einen eigenständigen Vokal (kein Konsonant,
-// keine Kombination) - für Teil 4 "Nachzeichnen" der Lektionen. Nutzt die
-// Prozent-Koordinaten aus strichfolgenVokale direkt auf der Ink-Box des
+// Für Konsonanten-Grundformen (க் …) die Strichfolge des Basiszeichens
+// verwenden, plus ein Punkt-Schritt oben für den Pulli.
+const PULLI = "்";
+function schritteFuerGrundform(zeichen: string): StrichSchritt[] {
+  if (!zeichen.endsWith(PULLI)) return [];
+  const basis = strichfolgenKonsonanten[zeichen.slice(0, -PULLI.length)];
+  if (!basis) return [];
+  return [...basis, { x: 50, y: 4, winkel: 0, punkt: true }];
+}
+
+// Wie zeichneVorlage, aber für ein einzelnes Zeichen (eigenständiger Vokal
+// oder Konsonant-Grundform) - für Teil 4 "Nachzeichnen" der Lektionen. Nutzt
+// die Prozent-Koordinaten aus strichfolgenVokale direkt auf der Ink-Box des
 // Zeichens, ohne die Konsonant/Vokalzeichen-Aufteilung von zeichneVorlage.
 export function zeichneVorlageVokal(
   canvas: HTMLCanvasElement,
@@ -266,7 +276,7 @@ export function zeichneVorlageVokal(
   ctx.fillText(zeichen, ursprungX, grundlinieY);
 
   const skala = Math.max(cssGroesse / 380, 0.6);
-  const schritte = strichfolgenVokale[zeichen] ?? [];
+  const schritte = strichfolgenVokale[zeichen] ?? schritteFuerGrundform(zeichen);
   schritte.forEach((s, i) => {
     zeichnePfeil(
       ctx,

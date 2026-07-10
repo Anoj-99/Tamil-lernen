@@ -9,9 +9,9 @@ import ErkennenModus from "./ErkennenModus";
 import FortschrittSeite from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
 import LehrerBereich from "./LehrerBereich";
-import LektionenSeite from "./LektionenSeite";
 import LoginSeite from "./LoginSeite";
 import NachzeichnenModus from "./NachzeichnenModus";
+import PfadSeite from "./PfadSeite";
 import PositionCheckModus from "./PositionCheckModus";
 import PruefungModus from "./PruefungModus";
 import PunkteLeiste from "./PunkteLeiste";
@@ -19,7 +19,7 @@ import { Reihenfolge } from "./uebungsHelfer";
 import { useRegeln } from "./useRegeln";
 
 type Modus =
-  | "lektionen"
+  | "pfad"
   | "erkennen"
   | "nachzeichnen"
   | "position"
@@ -28,7 +28,7 @@ type Modus =
   | "lehrer";
 
 const MODI: { id: Modus; name: string }[] = [
-  { id: "lektionen", name: "Lektionen" },
+  { id: "pfad", name: "Pfad" },
   { id: "erkennen", name: "Erkennen" },
   { id: "nachzeichnen", name: "Nachzeichnen" },
   { id: "position", name: "Position-Check" },
@@ -44,7 +44,7 @@ const NAV_SPALTEN: Record<number, string> = {
 export default function TamilLernen() {
   const { konto, punkte, laden, logout } = useKonto();
   const { regeln, aktualisiere, zuruecksetzen } = useRegeln();
-  const [modus, setModus] = useState<Modus>("erkennen");
+  const [modus, setModus] = useState<Modus>("pfad");
   const [gruppenId, setGruppenId] = useState<GruppenId>("vallinam_alle");
   const [reihenfolge, setReihenfolge] = useState<Reihenfolge>("zufaellig");
 
@@ -65,7 +65,7 @@ export default function TamilLernen() {
   // für die neue Rolle gar nicht gibt (z.B. "Lehrer" nach Schüler-Login).
   useEffect(() => {
     if (konto && !sichtbareModi.some((m) => m.id === modus)) {
-      setModus("erkennen");
+      setModus("pfad");
     }
   }, [konto, sichtbareModi, modus]);
 
@@ -188,7 +188,7 @@ export default function TamilLernen() {
         )}
 
         <main>
-          {modus === "lektionen" && <LektionenSeite />}
+          {modus === "pfad" && <PfadSeite />}
           {modus === "erkennen" && (
             <ErkennenModus
               key={gruppe.id}

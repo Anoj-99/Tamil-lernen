@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lektion, LektionBuchstabe, lektionen, Stufe, stufen, vorherigeStufe } from "../data/lektionen";
+import { Lektion, LektionBuchstabe, lektionen } from "../data/lektionen";
 import {
   Konsonant,
   konsonanten,
@@ -14,7 +14,6 @@ import {
   LektionInhaltUeberschreibung,
   RegelEintrag,
   SchuelerUebersicht,
-  StufenCheckpointKonfig,
 } from "../lib/typen";
 import {
   AmpelPunkt,
@@ -432,87 +431,6 @@ function LektionInhalteBlock({
   );
 }
 
-function CheckpointKonfigZeile({ stufe }: { stufe: Stufe }) {
-  const [konfig, setKonfig] = useState<StufenCheckpointKonfig | null>(null);
-  const [speichert, setSpeichert] = useState(false);
-  const [gespeichert, setGespeichert] = useState(false);
-
-  useEffect(() => {
-    datenquelle.ladeCheckpointKonfig(stufe.id).then(setKonfig).catch(() => {});
-  }, [stufe.id]);
-
-  if (!konfig) return <p className="text-sm text-slate-400">Lade …</p>;
-
-  const speichern = async () => {
-    setSpeichert(true);
-    setGespeichert(false);
-    try {
-      await datenquelle.speichereCheckpointKonfig(konfig);
-      setGespeichert(true);
-    } finally {
-      setSpeichert(false);
-    }
-  };
-
-  return (
-    <div className="rounded-xl border border-slate-200 p-3">
-      <p className="mb-2 text-sm font-medium text-slate-700">{stufe.name}</p>
-      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-        <label className="flex items-center gap-1.5">
-          Toleranz
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={konfig.toleranzProzent}
-            onChange={(e) => {
-              setGespeichert(false);
-              setKonfig({
-                ...konfig,
-                toleranzProzent: Math.min(100, Math.max(0, Number(e.target.value) || 0)),
-              });
-            }}
-            className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1.5"
-            aria-label={`Toleranz für ${stufe.name}`}
-          />
-          %
-        </label>
-        <label className="flex items-center gap-1.5">
-          Buchstaben der Vorstufe einmischen
-          <input
-            type="number"
-            min={0}
-            value={konfig.anzahlVorherigeBuchstaben}
-            onChange={(e) => {
-              setGespeichert(false);
-              setKonfig({
-                ...konfig,
-                anzahlVorherigeBuchstaben: Math.max(0, Number(e.target.value) || 0),
-              });
-            }}
-            className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1.5"
-            aria-label={`Anzahl Buchstaben der Vorstufe für ${stufe.name}`}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={speichern}
-          disabled={speichert}
-          className="rounded-lg bg-slate-900 px-3 py-1.5 text-white disabled:bg-slate-300"
-        >
-          Speichern
-        </button>
-        {gespeichert && <span className="text-xs text-green-700">Gespeichert.</span>}
-      </div>
-      {!vorherigeStufe(stufe.id) && (
-        <p className="mt-1.5 text-xs text-slate-400">
-          Es gibt noch keine vorherige Stufe zum Einmischen.
-        </p>
-      )}
-    </div>
-  );
-}
-
 function LektionenVerwaltung() {
   const [ueberschreibungen, setUeberschreibungen] = useState<
     Map<string, LektionInhaltUeberschreibung>
@@ -556,19 +474,6 @@ function LektionenVerwaltung() {
               aktualisiere={aktualisiere}
               zuruecksetzen={zuruecksetzen}
             />
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-1 text-sm font-medium text-slate-700">Stufen-Checkpoints</p>
-        <p className="mb-2 text-sm text-slate-500">
-          Ab wie viel Prozent richtiger Antworten gilt eine Stufe als bestanden, und wie viele
-          Buchstaben der vorherigen Stufe werden zur Wiederholung eingemischt.
-        </p>
-        <div className="flex flex-col gap-2">
-          {stufen.map((s) => (
-            <CheckpointKonfigZeile key={s.id} stufe={s} />
           ))}
         </div>
       </div>

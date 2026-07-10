@@ -12,7 +12,7 @@ export const EP_WERTE = {
   pruefungBestanden: 50,
   lektionTeilGeschafft: 5,
   lektionAbgeschlossen: 25,
-  stufenCheckpointBestanden: 40,
+  bossTestBestanden: 40,
 } as const;
 
 export function levelAus(epGesamt: number): number {

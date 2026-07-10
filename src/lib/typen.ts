@@ -124,22 +124,13 @@ export interface LektionInhaltUeberschreibung {
   bildUrl: string | null;
 }
 
-export interface StufenCheckpointKonfig {
-  stufeId: string;
-  toleranzProzent: number; // z.B. 80
-  anzahlVorherigeBuchstaben: number; // wie viele Buchstaben der Vorstufe eingemischt werden
-}
-
-export function standardCheckpointKonfig(stufeId: string): StufenCheckpointKonfig {
-  return { stufeId, toleranzProzent: 80, anzahlVorherigeBuchstaben: 3 };
-}
-
-export interface StufenCheckpointErgebnis {
-  id?: number;
+// Bestandener Boss-Test eines Levels (Gatekeeper am Lernpfad). Der Test
+// endet immer mit "bestanden" – falsche Fragen werden wiederholt, bis jede
+// einmal richtig war. ersteRundeFehler misst, wie schwer es war.
+export interface LevelFortschritt {
   username: string;
-  stufeId: string;
-  bestanden: boolean;
-  richtig: number;
-  gesamt: number;
-  zeitpunkt: string;
+  levelId: number;
+  bestandenAm: string; // ISO-Zeitstempel
+  fragenGesamt: number;
+  ersteRundeFehler: number;
 }

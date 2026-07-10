@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Stufe } from "../data/lektionen";
 import { datenquelle } from "../lib/datenquelle";
-import { LektionFortschritt } from "../lib/typen";
 
 // Fortschritt eines Schülers durch die 6 Teile einer Lektion. Teil n ist erst
 // erreichbar, wenn Teil n-1 abgeschlossen ist (feste Reihenfolge).
@@ -45,38 +43,4 @@ export function useLektionFortschritt(username: string, lektionId: string) {
   while (aktuellerTeil <= 6 && abgeschlosseneTeile.has(aktuellerTeil)) aktuellerTeil++;
 
   return { abgeschlosseneTeile, aktuellerTeil, teilAbschliessen, laden };
-}
-
-// Ist die ganze Stufe (über alle ihre Lektionen hinweg) fertig, d.h. jede
-// Lektion hat Teil 6 abgeschlossen? Für die aktuell offene Lektion wird der
-// lokal bereits bekannte Stand verwendet (kein Race mit dem gerade erst
-// losgeschickten Speichern), für andere Lektionen der Stufe der geladene.
-export function useStufeAbgeschlossen(
-  username: string,
-  stufe: Stufe | undefined,
-  aktuelleLektionId: string,
-  aktuelleLektionFertig: boolean,
-): boolean {
-  const [fortschritt, setFortschritt] = useState<LektionFortschritt[]>([]);
-
-  useEffect(() => {
-    if (!username || !stufe) return;
-    let aktiv = true;
-    datenquelle
-      .ladeLektionFortschritt(username)
-      .then((liste) => {
-        if (aktiv) setFortschritt(liste);
-      })
-      .catch(() => {});
-    return () => {
-      aktiv = false;
-    };
-  }, [username, stufe]);
-
-  if (!stufe) return false;
-  return stufe.lektionIds.every((id) =>
-    id === aktuelleLektionId
-      ? aktuelleLektionFertig
-      : fortschritt.some((f) => f.lektionId === id && f.teil === 6),
-  );
 }
