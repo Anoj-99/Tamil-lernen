@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   ampelFuerFach,
+  challengeHeuteGemacht,
   gewichtFuerFach,
+  kannStreakFreikaufen,
   levelAus,
   levelFortschritt,
   neuesFach,
+  streakFreikaufen,
+  streakFreikaufKosten,
+  verbucheChallenge,
   verbucheEp,
 } from "./punkteLogik";
 import { isoWoche, PunkteStand } from "./typen";
@@ -18,6 +23,9 @@ function stand(teil: Partial<PunkteStand>): PunkteStand {
     letzterLerntag: null,
     freezeVerfuegbar: true,
     freezeWoche: isoWoche(new Date(2026, 6, 8)),
+    challengePunkte: 0,
+    letzteChallenge: null,
+    gerissenerStreak: 0,
     ...teil,
   };
 }
@@ -141,5 +149,56 @@ describe("istPruefungsreif", () => {
     expect(istPruefungsreif([true, true, true, true, true])).toBe(true);
     expect(istPruefungsreif([true, true, false, true, true, true])).toBe(false);
     expect(istPruefungsreif([true, true, true, true, true, false])).toBe(true);
+  });
+});
+
+describe("Daily Challenge & Streak-Freikauf", () => {
+  const heute = new Date(2026, 6, 8);
+
+  it("merkt sich den verlorenen Streak beim Reißen", () => {
+    const neu = verbucheEp(
+      stand({ streakTage: 7, letzterLerntag: "2026-07-01", freezeVerfuegbar: false }),
+      2,
+      heute,
+    );
+    expect(neu.streakTage).toBe(1);
+    expect(neu.gerissenerStreak).toBe(7);
+  });
+
+  it("verbucht Challenge-Punkte und sperrt die Challenge für heute", () => {
+    const neu = verbucheChallenge(stand({ challengePunkte: 4 }), 8, heute);
+    expect(neu.challengePunkte).toBe(4 + 16);
+    expect(challengeHeuteGemacht(neu, heute)).toBe(true);
+    expect(challengeHeuteGemacht(stand({}), heute)).toBe(false);
+  });
+
+  it("kauft den Streak mit Challenge-Punkten zurück", () => {
+    const kaputt = stand({ streakTage: 2, gerissenerStreak: 7, challengePunkte: 30 });
+    expect(streakFreikaufKosten(7)).toBe(24);
+    expect(kannStreakFreikaufen(kaputt)).toBe(true);
+    const neu = streakFreikaufen(kaputt);
+    expect(neu.streakTage).toBe(9);
+    expect(neu.gerissenerStreak).toBe(0);
+    expect(neu.challengePunkte).toBe(6);
+  });
+
+  it("verweigert den Freikauf ohne genug Punkte", () => {
+    const kaputt = stand({ streakTage: 1, gerissenerStreak: 7, challengePunkte: 5 });
+    expect(kannStreakFreikaufen(kaputt)).toBe(false);
+    expect(streakFreikaufen(kaputt)).toEqual(kaputt);
+  });
+
+  it("lässt den Freikauf verfallen, sobald der neue Streak aufholt", () => {
+    const neu = verbucheEp(
+      stand({ streakTage: 3, gerissenerStreak: 3, letzterLerntag: "2026-07-07" }),
+      2,
+      heute,
+    );
+    expect(neu.streakTage).toBe(4);
+    expect(neu.gerissenerStreak).toBe(0);
+  });
+
+  it("deckelt die Freikauf-Kosten", () => {
+    expect(streakFreikaufKosten(100)).toBe(60);
   });
 });

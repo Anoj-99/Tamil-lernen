@@ -1,4 +1,5 @@
 import { EffektiverBuchstabe } from "./useLektionInhalt";
+import { useFehlerFeedback } from "./fehlerFeedback";
 import { baueLektionOptionen, useWiederholungBisRichtig } from "./lektionHelfer";
 import { useEffect, useState } from "react";
 
@@ -16,6 +17,7 @@ export default function TeilErkennen({ buchstaben, richtung, weiter }: Props) {
   const { aktuell, fertig, gesamtAnzahl, nochOffen, antworten } =
     useWiederholungBisRichtig(buchstaben);
   const [gewaehlt, setGewaehlt] = useState<EffektiverBuchstabe | null>(null);
+  const { klasse: zitterKlasse, ausloesen: fehlerAusloesen } = useFehlerFeedback();
 
   useEffect(() => {
     if (fertig) weiter();
@@ -31,6 +33,7 @@ export default function TeilErkennen({ buchstaben, richtung, weiter }: Props) {
   const waehlen = (option: EffektiverBuchstabe) => {
     if (beantwortet) return;
     setGewaehlt(option);
+    if (option.zeichen !== aktuell.zeichen) fehlerAusloesen();
   };
 
   const naechste = () => {
@@ -44,7 +47,7 @@ export default function TeilErkennen({ buchstaben, richtung, weiter }: Props) {
         Noch {nochOffen} von {gesamtAnzahl} zu meistern
       </p>
 
-      <div className="w-full rounded-2xl border border-slate-200 bg-white p-6 text-center">
+      <div className={`w-full rounded-2xl border border-slate-200 bg-white p-6 text-center ${zitterKlasse}`}>
         <p className="mb-2 text-sm text-slate-500">
           {richtung === "zeichen_zu_laut"
             ? "Wie wird dieses Zeichen ausgesprochen?"

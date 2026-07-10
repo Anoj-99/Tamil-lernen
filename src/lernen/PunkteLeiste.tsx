@@ -1,13 +1,18 @@
 import {
   EP_PRO_LEVEL,
+  kannStreakFreikaufen,
   levelAus,
   levelFortschritt,
+  streakFreikaufen,
+  streakFreikaufKosten,
   TAGESZIEL_EP,
 } from "../lib/punkteLogik";
 import { heuteIso, PunkteStand } from "../lib/typen";
+import { useKonto } from "./KontoContext";
 
 // Kompakte Übersicht: Level mit Fortschrittsbalken, Tagesziel und Streak.
 export default function PunkteLeiste({ punkte }: { punkte: PunkteStand }) {
+  const { wendePunkteAn } = useKonto();
   const level = levelAus(punkte.epGesamt);
   const fortschritt = levelFortschritt(punkte.epGesamt);
   const epHeute = punkte.heuteDatum === heuteIso() ? punkte.epHeute : 0;
@@ -57,12 +62,36 @@ export default function PunkteLeiste({ punkte }: { punkte: PunkteStand }) {
         </p>
         <p className="mt-1 text-lg font-bold">
           🔥 {punkte.streakTage} {punkte.streakTage === 1 ? "Tag" : "Tage"}
+          <span className="ml-2 text-sm font-medium text-violet-700">
+            ⚡ {punkte.challengePunkte}
+          </span>
         </p>
-        <p className="mt-2 text-xs text-slate-500">
-          {punkte.freezeVerfuegbar
-            ? "❄️ Freeze verfügbar – ein verpasster Tag wird verziehen."
-            : "Freeze diese Woche schon verbraucht."}
-        </p>
+        {punkte.gerissenerStreak > 0 ? (
+          <div className="mt-2">
+            <p className="text-xs text-red-600">
+              Streak von {punkte.gerissenerStreak} Tagen gerissen!
+            </p>
+            <button
+              type="button"
+              onClick={() => wendePunkteAn(streakFreikaufen)}
+              disabled={!kannStreakFreikaufen(punkte)}
+              className="mt-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              Freikaufen für ⚡ {streakFreikaufKosten(punkte.gerissenerStreak)}
+            </button>
+            {!kannStreakFreikaufen(punkte) && (
+              <p className="mt-1 text-xs text-slate-400">
+                Sammle Challenge-Punkte in der Daily Challenge.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-slate-500">
+            {punkte.freezeVerfuegbar
+              ? "❄️ Freeze verfügbar – ein verpasster Tag wird verziehen."
+              : "Freeze diese Woche schon verbraucht."}
+          </p>
+        )}
       </div>
     </section>
   );

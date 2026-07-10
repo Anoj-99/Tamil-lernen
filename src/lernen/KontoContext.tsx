@@ -20,6 +20,9 @@ interface KontoContextWert {
   login(username: string): Promise<void>;
   logout(): void;
   belohne(ep: number): void;
+  // Wendet eine reine Punkte-Transformation an (z.B. Challenge verbuchen,
+  // Streak freikaufen) und speichert im Hintergrund.
+  wendePunkteAn(update: (alt: PunkteStand) => PunkteStand): void;
 }
 
 const KontoContext = createContext<KontoContextWert | null>(null);
@@ -66,6 +69,18 @@ export function KontoProvider({ children }: { children: ReactNode }) {
     [konto],
   );
 
+  const wendePunkteAn = useCallback(
+    (update: (alt: PunkteStand) => PunkteStand) => {
+      if (!konto) return;
+      setPunkte((alt) => {
+        const neu = update(alt);
+        void datenquelle.speicherePunkte(konto.username, neu).catch(() => {});
+        return neu;
+      });
+    },
+    [konto],
+  );
+
   // Gemerkten Benutzer beim Start automatisch wieder anmelden.
   useEffect(() => {
     const gemerkt = localStorage.getItem(SITZUNG_KEY);
@@ -95,7 +110,7 @@ export function KontoProvider({ children }: { children: ReactNode }) {
 
   return (
     <KontoContext.Provider
-      value={{ konto, punkte, laden, loginFehler, login, logout, belohne }}
+      value={{ konto, punkte, laden, loginFehler, login, logout, belohne, wendePunkteAn }}
     >
       {children}
     </KontoContext.Provider>

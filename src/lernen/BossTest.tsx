@@ -3,6 +3,7 @@ import { LektionBuchstabe } from "../data/lektionen";
 import { buchstabenDesLevels, Level } from "../data/levelPlan";
 import { datenquelle } from "../lib/datenquelle";
 import { EP_WERTE } from "../lib/punkteLogik";
+import { useFehlerFeedback } from "./fehlerFeedback";
 import { useKonto } from "./KontoContext";
 import { baueLektionOptionen } from "./lektionHelfer";
 import { mische } from "./uebungsHelfer";
@@ -47,6 +48,7 @@ export default function BossTest({ level, zurueck, bestanden }: Props) {
   const [warteschlange, setWarteschlange] = useState<Frage[]>(alleFragen);
   const [falscheSchluessel, setFalscheSchluessel] = useState<Set<string>>(new Set());
   const [gewaehlt, setGewaehlt] = useState<LektionBuchstabe | null>(null);
+  const { klasse: zitterKlasse, ausloesen: fehlerAusloesen } = useFehlerFeedback();
 
   if (!konto) return null;
 
@@ -72,6 +74,7 @@ export default function BossTest({ level, zurueck, bestanden }: Props) {
     if (gewaehlt || !frage) return;
     setGewaehlt(option);
     const richtig = option.zeichen === frage.buchstabe.zeichen;
+    if (!richtig) fehlerAusloesen();
     const neueFalsche = new Set(falscheSchluessel);
     if (!richtig) neueFalsche.add(frageSchluessel(frage));
     setFalscheSchluessel(neueFalsche);
@@ -159,7 +162,7 @@ export default function BossTest({ level, zurueck, bestanden }: Props) {
         />
       </div>
 
-      <div className="w-full rounded-2xl border border-slate-200 bg-white p-6 text-center">
+      <div className={`w-full rounded-2xl border border-slate-200 bg-white p-6 text-center ${zitterKlasse}`}>
         <p className="mb-2 text-sm text-slate-500">
           {frage.richtung === "zeichen_zu_laut"
             ? "Wie wird dieses Zeichen ausgesprochen?"

@@ -189,3 +189,13 @@ create table level_fortschritt (
 
 alter table level_fortschritt enable row level security;
 create policy "anon alles" on level_fortschritt for all to anon using (true) with check (true);
+
+-- ---------------------------------------------------------------------------
+-- Daily Challenge & Streak-Freikauf (Phase 3 der neuen Struktur).
+-- Falls du schema.sql schon einmal ausgeführt hast, reicht es, nur diesen
+-- Abschnitt neu im SQL-Editor auszuführen.
+-- ---------------------------------------------------------------------------
+
+alter table punkte add column if not exists challenge_punkte integer not null default 0;
+alter table punkte add column if not exists letzte_challenge date;
+alter table punkte add column if not exists gerissener_streak integer not null default 0;

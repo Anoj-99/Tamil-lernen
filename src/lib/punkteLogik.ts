@@ -13,6 +13,7 @@ export const EP_WERTE = {
   lektionTeilGeschafft: 5,
   lektionAbgeschlossen: 25,
   bossTestBestanden: 40,
+  challengeAbgeschlossen: 15,
 } as const;
 
 export function levelAus(epGesamt: number): number {
@@ -51,6 +52,7 @@ export function verbucheEp(
   }
 
   let streakTage = stand.streakTage;
+  let gerissenerStreak = stand.gerissenerStreak;
   if (stand.letzterLerntag === heute) {
     // heute schon gelernt – Streak unverändert
   } else if (stand.letzterLerntag === gestern) {
@@ -59,12 +61,18 @@ export function verbucheEp(
     streakTage += 1;
     freezeVerfuegbar = false;
   } else {
+    // Streak gerissen – den verlorenen Stand merken, er kann mit
+    // Challenge-Punkten freigekauft werden (siehe streakFreikaufen).
+    if (stand.streakTage > 1) gerissenerStreak = stand.streakTage;
     streakTage = 1;
   }
+  // Sobald der neue Streak den verlorenen einholt, verfällt der Freikauf.
+  if (gerissenerStreak > 0 && streakTage >= gerissenerStreak) gerissenerStreak = 0;
 
   const epHeute = (stand.heuteDatum === heute ? stand.epHeute : 0) + ep;
 
   return {
+    ...stand,
     epGesamt: stand.epGesamt + ep,
     epHeute,
     heuteDatum: heute,
@@ -72,6 +80,56 @@ export function verbucheEp(
     letzterLerntag: heute,
     freezeVerfuegbar,
     freezeWoche,
+    gerissenerStreak,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Daily Challenge & Streak-Freikauf
+// ---------------------------------------------------------------------------
+
+export const CHALLENGE_PUNKTE_PRO_RICHTIGE = 2;
+export const CHALLENGE_FRAGEN = 10;
+
+export function challengeHeuteGemacht(stand: PunkteStand, jetzt: Date = new Date()): boolean {
+  return stand.letzteChallenge === heuteIso(jetzt);
+}
+
+// Verbucht eine abgeschlossene Daily Challenge (nur die Challenge-Punkte –
+// EP laufen separat über verbucheEp/belohne).
+export function verbucheChallenge(
+  stand: PunkteStand,
+  richtige: number,
+  jetzt: Date = new Date(),
+): PunkteStand {
+  return {
+    ...stand,
+    challengePunkte: stand.challengePunkte + richtige * CHALLENGE_PUNKTE_PRO_RICHTIGE,
+    letzteChallenge: heuteIso(jetzt),
+  };
+}
+
+// Kosten steigen mit der Länge des verlorenen Streaks (gedeckelt).
+export function streakFreikaufKosten(gerissenerStreak: number): number {
+  return Math.min(10 + gerissenerStreak * 2, 60);
+}
+
+export function kannStreakFreikaufen(stand: PunkteStand): boolean {
+  return (
+    stand.gerissenerStreak > 0 &&
+    stand.challengePunkte >= streakFreikaufKosten(stand.gerissenerStreak)
+  );
+}
+
+// Stellt den gerissenen Streak wieder her: die verlorenen Tage werden auf
+// den aktuellen Streak aufgeschlagen, die Challenge-Punkte abgezogen.
+export function streakFreikaufen(stand: PunkteStand): PunkteStand {
+  if (!kannStreakFreikaufen(stand)) return stand;
+  return {
+    ...stand,
+    challengePunkte: stand.challengePunkte - streakFreikaufKosten(stand.gerissenerStreak),
+    streakTage: stand.streakTage + stand.gerissenerStreak,
+    gerissenerStreak: 0,
   };
 }
 

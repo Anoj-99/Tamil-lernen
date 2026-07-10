@@ -6,6 +6,7 @@ import {
 } from "../data/tamilSchrift";
 import { istLokalerModus } from "../lib/datenquelle";
 import BibliothekSeite from "./BibliothekSeite";
+import DailyChallenge from "./DailyChallenge";
 import ErkennenModus from "./ErkennenModus";
 import FortschrittSeite from "./FortschrittSeite";
 import { useKonto } from "./KontoContext";
@@ -22,6 +23,7 @@ import { useRegeln } from "./useRegeln";
 type Modus =
   | "pfad"
   | "bibliothek"
+  | "challenge"
   | "erkennen"
   | "nachzeichnen"
   | "position"
@@ -32,6 +34,7 @@ type Modus =
 const MODI: { id: Modus; name: string }[] = [
   { id: "pfad", name: "Pfad" },
   { id: "bibliothek", name: "Bibliothek" },
+  { id: "challenge", name: "Challenge" },
   { id: "erkennen", name: "Erkennen" },
   { id: "nachzeichnen", name: "Nachzeichnen" },
   { id: "position", name: "Position-Check" },
@@ -207,6 +210,7 @@ export default function TamilLernen() {
               }}
             />
           )}
+          {modus === "challenge" && <DailyChallenge />}
           {modus === "erkennen" && (
             <ErkennenModus
               key={gruppe.id}

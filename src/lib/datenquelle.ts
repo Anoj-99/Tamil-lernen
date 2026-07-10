@@ -102,6 +102,9 @@ class SupabaseDatenquelle implements Datenquelle {
       letzterLerntag: (z.letzter_lerntag as string | null) ?? null,
       freezeVerfuegbar: Boolean(z.freeze_verfuegbar ?? true),
       freezeWoche: String(z.freeze_woche ?? isoWoche(new Date())),
+      challengePunkte: Number(z.challenge_punkte ?? 0),
+      letzteChallenge: (z.letzte_challenge as string | null) ?? null,
+      gerissenerStreak: Number(z.gerissener_streak ?? 0),
     };
   }
 
@@ -116,6 +119,9 @@ class SupabaseDatenquelle implements Datenquelle {
         letzter_lerntag: stand.letzterLerntag,
         freeze_verfuegbar: stand.freezeVerfuegbar,
         freeze_woche: stand.freezeWoche,
+        challenge_punkte: stand.challengePunkte,
+        letzte_challenge: stand.letzteChallenge,
+        gerissener_streak: stand.gerissenerStreak,
       }),
     );
   }
@@ -225,6 +231,9 @@ class SupabaseDatenquelle implements Datenquelle {
         letzterLerntag: (z.letzter_lerntag as string | null) ?? null,
         freezeVerfuegbar: Boolean(z.freeze_verfuegbar ?? true),
         freezeWoche: String(z.freeze_woche ?? ""),
+        challengePunkte: Number(z.challenge_punkte ?? 0),
+        letzteChallenge: (z.letzte_challenge as string | null) ?? null,
+        gerissenerStreak: Number(z.gerissener_streak ?? 0),
       });
     }
     return (konten ?? []).map((k) => ({
@@ -471,7 +480,10 @@ class LokaleDatenquelle implements Datenquelle {
   }
 
   async ladePunkte(username: string): Promise<PunkteStand> {
-    return this.lade().punkte[username] ?? leererPunkteStand();
+    // Mit Standardwerten mischen, damit ältere lokale Stände neue Felder
+    // (z.B. Challenge-Punkte) nachträglich bekommen.
+    const gespeichert = this.lade().punkte[username];
+    return gespeichert ? { ...leererPunkteStand(), ...gespeichert } : leererPunkteStand();
   }
 
   async speicherePunkte(username: string, stand: PunkteStand): Promise<void> {

@@ -16,6 +16,9 @@ export interface PunkteStand {
   letzterLerntag: string | null; // ISO-Datum
   freezeVerfuegbar: boolean;
   freezeWoche: string; // ISO-Woche "2026-W28", in der der Freeze zuletzt aufgefüllt wurde
+  challengePunkte: number; // Währung aus der Daily Challenge (für Streak-Freikauf)
+  letzteChallenge: string | null; // ISO-Datum der letzten abgeschlossenen Daily Challenge
+  gerissenerStreak: number; // zuletzt verlorener Streak, freikaufbar (0 = keiner)
 }
 
 export interface RegelEintrag {
@@ -82,6 +85,9 @@ export function leererPunkteStand(): PunkteStand {
     letzterLerntag: null,
     freezeVerfuegbar: true,
     freezeWoche: isoWoche(new Date()),
+    challengePunkte: 0,
+    letzteChallenge: null,
+    gerissenerStreak: 0,
   };
 }
 
