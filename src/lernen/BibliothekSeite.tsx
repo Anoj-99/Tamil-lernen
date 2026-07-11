@@ -8,6 +8,7 @@ import {
   uyirZeichen,
 } from "../data/bibliothek";
 import { lektionById } from "../data/lektionen";
+import { schwierigkeitsStufen, woerter } from "../data/woerter";
 import { datenquelle } from "../lib/datenquelle";
 import { useKonto } from "./KontoContext";
 import { sprachausgabeVerfuegbar, sprich } from "./sprache";
@@ -30,6 +31,7 @@ interface Props {
 // Deep-Link zurück in die Lektion, in der das Zeichen gelehrt wurde.
 export default function BibliothekSeite({ oeffneLektion }: Props) {
   const { konto } = useKonto();
+  const [tab, setTab] = useState<"zeichen" | "woerter">("zeichen");
   const [gelernteLektionen, setGelernteLektionen] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<BibliothekZeichen | null>(null);
 
@@ -135,8 +137,81 @@ export default function BibliothekSeite({ oeffneLektion }: Props) {
     </button>
   );
 
+  const tabKnopf = (id: "zeichen" | "woerter", name: string) => (
+    <button
+      type="button"
+      onClick={() => setTab(id)}
+      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+        tab === id
+          ? "border-slate-900 bg-slate-900 text-white"
+          : "border-slate-300 bg-white text-slate-700"
+      }`}
+    >
+      {name}
+    </button>
+  );
+
+  if (tab === "woerter") {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex gap-2">
+          {tabKnopf("zeichen", "Zeichen")}
+          {tabKnopf("woerter", "Wörter")}
+        </div>
+        <p className="text-center text-xs text-slate-500">
+          Sortiert nach Schwierigkeit – thematische Sortierung (Essen,
+          Familie, Verben) folgt später.
+        </p>
+        {schwierigkeitsStufen.map((stufe) => (
+          <section key={stufe}>
+            <h2 className="mb-2 font-semibold">Schwierigkeit {stufe}</h2>
+            <div className="flex flex-col gap-2">
+              {woerter
+                .filter((w) => w.schwierigkeit === stufe)
+                .map((w) => {
+                  const gelernt = gelernteLektionen.has(w.lektionId);
+                  return (
+                    <div
+                      key={w.wortTamil}
+                      className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
+                        gelernt ? "border-green-300 bg-green-50" : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <span className="tamil-schrift text-2xl">{w.wortTamil}</span>
+                      <span className="flex-1 text-sm text-slate-600">{w.lautschrift}</span>
+                      {sprachausgabeVerfuegbar && (
+                        <button
+                          type="button"
+                          onClick={() => sprich(w.wortTamil, 0.9)}
+                          aria-label={`${w.wortTamil} anhören`}
+                          className="rounded-full border border-slate-300 bg-white px-2.5 py-1.5 hover:bg-slate-50"
+                        >
+                          🔊
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => oeffneLektion(w.lektionId)}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        Zur Lektion
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex gap-2">
+        {tabKnopf("zeichen", "Zeichen")}
+        {tabKnopf("woerter", "Wörter")}
+      </div>
       <p className="text-center text-sm text-slate-500">
         {anzahlGelernt} von {ANZAHL_ZEICHEN_GESAMT} Zeichen gelernt ·{" "}
         <span className="rounded bg-green-50 px-1.5 py-0.5 text-green-800">grün = gelernt</span>

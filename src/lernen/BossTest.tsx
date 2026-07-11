@@ -5,6 +5,7 @@ import { datenquelle } from "../lib/datenquelle";
 import { EP_WERTE } from "../lib/punkteLogik";
 import { useFehlerFeedback } from "./fehlerFeedback";
 import { useKonto } from "./KontoContext";
+import Maskottchen from "./Maskottchen";
 import { baueLektionOptionen } from "./lektionHelfer";
 import { mische } from "./uebungsHelfer";
 
@@ -124,7 +125,7 @@ export default function BossTest({ level, zurueck, bestanden }: Props) {
   if (phase === "geschafft") {
     return (
       <section className="flex flex-col items-center gap-3 rounded-2xl border border-green-300 bg-green-50 p-8 text-center">
-        <p className="text-4xl">🎉</p>
+        <Maskottchen levelId={level.id} stimmung="jubel" gross />
         <h2 className="text-xl font-bold text-green-800">
           Level {level.id} bestanden! +{EP_WERTE.bossTestBestanden} EP
         </h2>

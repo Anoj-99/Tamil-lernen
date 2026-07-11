@@ -1,24 +1,38 @@
 # Akaram (அகரம்) – Tamil-Schrift lernen
 
-Eigenständige Lern-App für Tamil-Konsonant-Vokal-Kombinationen
-(deutschsprachige UI), aufgebaut wie eine Fahrschul-Theorie-App:
-Übungsmodi **Erkennen**, **Nachzeichnen**, **Position-Check** und
-**Prüfungssimulation**, dazu Punkte/Level/Streak, Fehlerverlauf,
-Leitner-Wiederholung und ein Lehrer-Dashboard.
+Eigenständige Lern-App für die tamilische Schrift (deutschsprachige UI):
+
+- **Lernpfad** durch Sri Lanka: Level mit je 3 Lektionen und einem
+  Boss-Test als Gatekeeper (falsche Fragen wiederholen sich, bis alles
+  sitzt), Maskottchen mit Evolution (Pfau → Affe → Tiger → Elefant)
+- **Bibliothek** mit allen 247 Zeichen in klassischer Reihenfolge
+  (Uyir → Ayutham → Mei → Uyirmei) + Wort-Bibliothek nach Schwierigkeit,
+  Deep-Links zurück in die Ursprungs-Lektion
+- **Daily Challenge** (Multiple Choice, Wort↔Bild, Hör-Fragen) mit
+  Challenge-Punkten zum **Streak-Freikauf**
+- Freie Übungsmodi **Erkennen**, **Nachzeichnen**, **Position-Check**,
+  **Prüfungssimulation**, dazu EP/Level/Streak, Leitner-Wiederholung
+- **Hausaufgaben als Side-Quest** am Pfad: Lehrer stellen Pakete aus
+  einem Themen-Pool zusammen (mit Deadline)
 
 Die App ist bewusst unabhängig von der TamilConnect-App: eigenes
 `package.json`, eigener Build, eigene (separate) Supabase-Datenbank.
 
 ## Konten & Rollen
 
-- Login nur mit Benutzername – kein Passwort, keine E-Mail. Ein neuer
-  Name legt automatisch ein neues Schüler-Konto an.
-- Rolle `lehrer` wird direkt in Supabase vergeben (Table Editor →
-  `accounts` → Spalte `rolle`, oder per SQL:
-  `update accounts set rolle = 'lehrer' where username = 'NAME';`).
+- Login nur mit Benutzername – kein Passwort. Ein neuer Name legt
+  automatisch ein Schüler-Konto an (optional mit Lehrer-Code gebunden).
+- Rollen-Hierarchie: **Admin** legt Schulen + Schulleiter an →
+  **Schulleiter** gibt seinen Schul-Code an Lehrer weiter (sieht nur
+  aggregierte Schul-Statistik) → **Lehrer** registriert sich mit dem
+  Schul-Code und erhält einen eigenen Code als QR → **Schüler** scannen
+  den QR-Code und werden der Klasse zugeordnet.
+- Rolle `admin` wird direkt in Supabase vergeben (SQL:
+  `update accounts set rolle = 'admin' where username = 'NAME';`).
 - Ohne konfigurierte Datenbank läuft die App im **Test-Modus**: alles
-  wird nur im Browser (localStorage) gespeichert. Dort bekommt der
-  Benutzername `lehrer` automatisch Lehrer-Rechte zum Ausprobieren.
+  wird nur im Browser (localStorage) gespeichert. Dort bekommen die
+  Benutzernamen `lehrer`, `schulleiter` und `admin` automatisch die
+  passende Rolle zum Ausprobieren.
 
 ## Supabase einrichten (einmalig)
 

@@ -1,6 +1,8 @@
 import { Lektion } from "../data/lektionen";
+import { levelFuerLektion } from "../data/levelPlan";
 import { EP_WERTE } from "../lib/punkteLogik";
 import { useKonto } from "./KontoContext";
+import Maskottchen from "./Maskottchen";
 import TeilCheckpoint from "./TeilCheckpoint";
 import TeilErkennen from "./TeilErkennen";
 import TeilNachzeichnen from "./TeilNachzeichnen";
@@ -98,6 +100,11 @@ export default function LektionAnsicht({ lektion, zurueck }: Props) {
 
       {aktuellerTeil > 6 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-green-300 bg-green-50 p-8 text-center">
+          <Maskottchen
+            levelId={levelFuerLektion(lektion.id)?.id ?? 1}
+            stimmung="jubel"
+            gross
+          />
           <p className="text-lg font-semibold text-green-800">Lektion abgeschlossen! 🎉</p>
           <p className="text-sm text-green-700">
             Alle Teile von „{lektion.name}" mindestens einmal richtig gemeistert.

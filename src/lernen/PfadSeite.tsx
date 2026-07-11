@@ -3,11 +3,20 @@ import { Lektion, lektionById } from "../data/lektionen";
 import { Level, levels } from "../data/levelPlan";
 import { datenquelle } from "../lib/datenquelle";
 import { LektionFortschritt, LevelFortschritt } from "../lib/typen";
+import { MASKOTTCHEN_EVOLUTION } from "../data/levelPlan";
 import BossTest from "./BossTest";
 import HausaufgabenAnsicht from "./HausaufgabenAnsicht";
 import { useKonto } from "./KontoContext";
 import LektionAnsicht from "./LektionAnsicht";
+import Maskottchen from "./Maskottchen";
 import { MeineAufgabe, useHausaufgaben } from "./useHausaufgaben";
+
+// Sri-Lanka-Kulisse: jede Etappe der Reise bekommt ihre eigene Szene.
+const LEVEL_SZENEN = ["🌴", "🛕", "🐘", "🏝️", "⛰️"];
+
+function szeneFuerLevel(levelId: number): string {
+  return LEVEL_SZENEN[(levelId - 1) % LEVEL_SZENEN.length];
+}
 
 type Ansicht =
   | { typ: "pfad" }
@@ -250,8 +259,22 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
     </div>
   );
 
+  // Nächste Maskottchen-Evolution (alle 5 Level) als Ausblick am Pfadende.
+  const naechsteEvolutionsStufe = Math.floor((aktivesLevelId - 1) / 5) + 1;
+  const naechstesTier =
+    MASKOTTCHEN_EVOLUTION[Math.min(naechsteEvolutionsStufe, MASKOTTCHEN_EVOLUTION.length - 1)];
+  const evolutionSteht = naechsteEvolutionsStufe < MASKOTTCHEN_EVOLUTION.length;
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 rounded-3xl bg-gradient-to-b from-sky-50 via-emerald-50/60 to-amber-50 p-4">
+      <div className="text-center">
+        <p className="text-2xl leading-none">🌊 🌴 ☀️ 🌴 🌊</p>
+        <h2 className="mt-1 font-semibold text-slate-800">Deine Reise durch Sri Lanka</h2>
+        <p className="text-xs text-slate-500">
+          Lerne dich Level für Level durch die Insel – dein Begleiter läuft mit.
+        </p>
+      </div>
+
       {levels.map((level) => {
         const status = levelStatus.get(level.id) ?? "gesperrt";
         return (
@@ -259,8 +282,8 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
             key={level.id}
             className={`rounded-2xl border p-5 ${
               status === "gesperrt"
-                ? "border-slate-200 bg-slate-50"
-                : "border-slate-200 bg-white"
+                ? "border-slate-200 bg-slate-50/80"
+                : "border-emerald-200 bg-white/90"
             }`}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -269,12 +292,17 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
                   status === "gesperrt" ? "text-slate-400" : "text-slate-900"
                 }`}
               >
+                <span className="mr-1.5">{szeneFuerLevel(level.id)}</span>
                 Level {level.id}: {level.name}
               </h2>
-              {status === "fertig" && (
+              {status === "fertig" ? (
                 <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
                   Bestanden 🏆
                 </span>
+              ) : (
+                level.id === aktivesLevelId && (
+                  <Maskottchen levelId={aktivesLevelId} beschriftung />
+                )
               )}
             </div>
 
@@ -313,8 +341,18 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
         );
       })}
 
+      {evolutionSteht && (
+        <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50/80 p-4 text-center">
+          <p className="text-2xl">✨</p>
+          <p className="text-sm font-medium text-amber-800">
+            In Level {naechsteEvolutionsStufe * 5 + 1} entwickelt sich dein
+            Begleiter zum {naechstesTier} weiter!
+          </p>
+        </div>
+      )}
+
       <p className="text-center text-xs text-slate-400">
-        Weitere Level (Uyirmei-Kombinationen) folgen – der Pfad wächst mit.
+        🌴 Weitere Level (Uyirmei-Kombinationen) folgen – der Pfad wächst mit.
       </p>
     </div>
   );

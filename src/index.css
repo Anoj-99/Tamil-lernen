@@ -16,3 +16,22 @@
 .zittern {
   animation: zittern 0.4s ease-in-out;
 }
+
+/* Maskottchen: sanftes Wippen im Ruhezustand, Hüpfen beim Jubeln. */
+@keyframes maskottchen-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.maskottchen-idle {
+  animation: maskottchen-idle 2.4s ease-in-out infinite;
+}
+@keyframes maskottchen-jubel {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-14px) rotate(-8deg); }
+  40% { transform: translateY(0) rotate(0deg); }
+  60% { transform: translateY(-10px) rotate(8deg); }
+  80% { transform: translateY(0) rotate(0deg); }
+}
+.maskottchen-jubel {
+  animation: maskottchen-jubel 0.9s ease-in-out infinite;
+}
