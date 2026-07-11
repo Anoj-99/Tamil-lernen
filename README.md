@@ -75,6 +75,18 @@ npm run build   # Typecheck + Produktions-Build nach dist/
    `tamil-lernen.vercel.app` (Production-Deployments sind öffentlich,
    kein Vercel-Login nötig).
 
+### Eigene Domain (akaram.study)
+
+Geplante Domain: **akaram.study**. Einrichtung: Domain beim Registrar
+kaufen → im Vercel-Projekt unter *Settings → Domains* `akaram.study`
+hinzufügen → die angezeigten DNS-Einträge (A-Record bzw. CNAME) beim
+Registrar setzen. Die vercel.app-Adresse leitet danach automatisch um.
+
+Wichtig: Die Domain sollte stehen, **bevor** Lehrer QR-Codes drucken –
+der QR enthält die Web-Adresse, gedruckte Codes überleben einen
+Domain-Wechsel nicht. Im Code ist nichts fest verdrahtet (QR-Links
+nutzen `window.location`), ein Wechsel braucht also keine Code-Änderung.
+
 Falls bisher ein Vercel-Projekt mit Root Directory `tamil-lernen` im
 `tamilconnect`-Repo verbunden war: in den Projekt-Settings unter
 **Git** die Repo-Verbindung auf `Anoj-99/tamil-lernen` umstellen und
