@@ -35,3 +35,23 @@
 .maskottchen-jubel {
   animation: maskottchen-jubel 0.9s ease-in-out infinite;
 }
+
+/* Spielkarte: offene Level-Steine pulsieren sanft, der Avatar wippt. */
+@keyframes stein-puls {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.stein-puls {
+  animation: stein-puls 2.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes karte-avatar-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.karte-avatar-bob {
+  animation: karte-avatar-bob 1.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}

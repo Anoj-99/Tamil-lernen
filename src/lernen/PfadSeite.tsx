@@ -1,30 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Lektion, lektionById } from "../data/lektionen";
-import { Level, levels } from "../data/levelPlan";
+import {
+  Level,
+  levelFuerLektion,
+  levels,
+  MASKOTTCHEN_EVOLUTION,
+  maskottchenFuerLevel,
+} from "../data/levelPlan";
 import { datenquelle } from "../lib/datenquelle";
-import { LektionFortschritt, LevelFortschritt } from "../lib/typen";
-import { MASKOTTCHEN_EVOLUTION } from "../data/levelPlan";
+import { Hausaufgabe, LektionFortschritt, LevelFortschritt } from "../lib/typen";
 import BossTest from "./BossTest";
 import HausaufgabenAnsicht from "./HausaufgabenAnsicht";
+import { baueKartenLayout, KartenKnoten, QuestEingabe } from "./karte/kartenLayout";
+import PfadKarte, { KnotenStatus } from "./karte/PfadKarte";
 import { useKonto } from "./KontoContext";
 import LektionAnsicht from "./LektionAnsicht";
-import Maskottchen from "./Maskottchen";
-import { MeineAufgabe, useHausaufgaben } from "./useHausaufgaben";
-
-// Sri-Lanka-Kulisse: jede Etappe der Reise bekommt ihre eigene Szene.
-const LEVEL_SZENEN = ["🌴", "🛕", "🐘", "🏝️", "⛰️"];
-
-function szeneFuerLevel(levelId: number): string {
-  return LEVEL_SZENEN[(levelId - 1) % LEVEL_SZENEN.length];
-}
+import { maskottchenEmoji } from "./Maskottchen";
+import { useHausaufgaben } from "./useHausaufgaben";
 
 type Ansicht =
   | { typ: "pfad" }
   | { typ: "lektion"; lektion: Lektion }
   | { typ: "boss"; level: Level }
   | { typ: "hausaufgabe"; aufgabeId: number };
-
-type KnotenStatus = "gesperrt" | "offen" | "fertig";
 
 interface PfadDaten {
   lektionFertig: Set<string>; // Lektions-IDs mit Teil 6 abgeschlossen
@@ -63,53 +61,25 @@ function berechneStatus(daten: PfadDaten) {
   return { levelStatus, lektionStatus, bossStatus };
 }
 
-function KnotenKreis({
-  status,
-  inhalt,
-  beschriftung,
-  onClick,
-  boss = false,
-}: {
-  status: KnotenStatus;
-  inhalt: string;
-  beschriftung: string;
-  onClick: () => void;
-  boss?: boolean;
-}) {
-  const basis =
-    "flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 text-2xl transition-transform";
-  let farben = "border-slate-300 bg-white text-slate-300"; // gesperrt
-  if (status === "offen")
-    farben = boss
-      ? "border-amber-500 bg-amber-100 text-amber-700 hover:scale-105"
-      : "border-blue-500 bg-blue-50 text-blue-700 hover:scale-105";
-  if (status === "fertig") farben = "border-green-600 bg-green-100 text-green-700";
-
-  return (
-    <div className="flex items-center gap-4">
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={status === "gesperrt"}
-        aria-label={beschriftung}
-        className={`${basis} ${farben} ${status === "gesperrt" ? "cursor-not-allowed" : ""}`}
-      >
-        {status === "gesperrt" ? "🔒" : status === "fertig" ? "✓" : inhalt}
-      </button>
-      <div>
-        <p
-          className={`text-sm font-medium ${
-            status === "gesperrt" ? "text-slate-400" : "text-slate-800"
-          }`}
-        >
-          {beschriftung}
-        </p>
-        {status === "offen" && (
-          <p className="text-xs text-blue-600">{boss ? "Bereit zum Test!" : "Jetzt lernen"}</p>
-        )}
-      </div>
-    </div>
-  );
+// Eine Hausaufgabe erscheint auf der Karte erst nach dem höchsten Level,
+// dessen Stoff sie abfragt (Pool-Bausteine → Lektionen → Level;
+// Kombinations-Gruppen gehören zu den Konsonanten-Leveln).
+function questLevelId(aufgabe: Hausaufgabe): number {
+  const letztesLevel = levels[levels.length - 1]?.id ?? 1;
+  let hoechstes = 1;
+  for (const teil of aufgabe.teile) {
+    if (teil.poolId.startsWith("lektion:")) {
+      const level = levelFuerLektion(teil.poolId.slice("lektion:".length));
+      if (level) hoechstes = Math.max(hoechstes, level.id);
+    } else if (teil.poolId.startsWith("gruppe:")) {
+      const gruppe = teil.poolId.slice("gruppe:".length);
+      hoechstes = Math.max(
+        hoechstes,
+        gruppe.startsWith("vallinam") ? 2 : gruppe.startsWith("mellinam") ? 3 : letztesLevel,
+      );
+    }
+  }
+  return Math.min(hoechstes, letztesLevel);
 }
 
 interface Props {
@@ -119,9 +89,11 @@ interface Props {
   sprungVerbraucht?: () => void;
 }
 
-// Der Lernpfad (Dashboard): Level mit je 3 Lektionen und einem Boss-Test
-// als Gatekeeper, vertikal von oben nach unten. Gesperrte Knoten öffnen
-// sich erst, wenn der vorherige Schritt gemeistert ist.
+// Das Dashboard: die Sri-Lanka-Spielkarte (PfadKarte) als Darstellung des
+// Lernpfads. Die gesamte Freischalt- und Lernlogik lebt weiterhin hier –
+// die Karte ist reine Präsentation und Interaktion. Level, Lektionen und
+// Side-Quests werden komplett aus levelPlan.ts bzw. den Hausaufgaben
+// generiert; feste Positionen gibt es nicht.
 export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props = {}) {
   const { konto } = useKonto();
   const [ansicht, setAnsicht] = useState<Ansicht>({ typ: "pfad" });
@@ -176,6 +148,72 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
     [daten],
   );
 
+  // Karten-Layout: komplett aus den Daten generiert (levelPlan.ts +
+  // Hausaufgaben) – neue Level erscheinen automatisch auf der Karte.
+  const layout = useMemo(() => {
+    const quests: QuestEingabe[] = hausaufgaben.map((meine) => ({
+      aufgabeId: meine.aufgabe.id,
+      levelId: questLevelId(meine.aufgabe),
+      name: `Side-Quest: ${meine.aufgabe.thema}`,
+    }));
+    return baueKartenLayout(
+      levels,
+      (lektionId) => lektionById(lektionId)?.name ?? lektionId,
+      quests,
+    );
+  }, [hausaufgaben]);
+
+  const statusFuer = useCallback(
+    (knoten: KartenKnoten): KnotenStatus => {
+      if (knoten.typ === "lektion") {
+        return lektionStatus.get(knoten.lektionId ?? "") ?? "gesperrt";
+      }
+      if (knoten.typ === "boss") {
+        return bossStatus.get(knoten.levelId) ?? "gesperrt";
+      }
+      // Side-Quests sind optional und nie gesperrt.
+      const meine = hausaufgaben.find((a) => a.aufgabe.id === knoten.aufgabeId);
+      return meine?.erledigt ? "fertig" : "offen";
+    },
+    [lektionStatus, bossStatus, hausaufgaben],
+  );
+
+  // Aktueller Fortschritt = erster offener Knoten auf dem Hauptweg; dort
+  // steht der Avatar (auch nach einem Neustart der App).
+  const startKnoten = useMemo(
+    () =>
+      layout.hauptpfad.find((k) => statusFuer(k) === "offen") ??
+      layout.hauptpfad[layout.hauptpfad.length - 1],
+    [layout, statusFuer],
+  );
+
+  const aktivesLevelId =
+    levels.find((l) => levelStatus.get(l.id) === "offen")?.id ??
+    levels[levels.length - 1]?.id ??
+    1;
+
+  // Offene Hausaufgabe hinter dem aktuellen Fortschritt → Hinweis oben
+  // rechts auf der Karte.
+  const hinweisQuest = useMemo(() => {
+    const offene = layout.questPfade.find((q) => {
+      const meine = hausaufgaben.find((a) => a.aufgabe.id === q.knoten.aufgabeId);
+      return meine && !meine.erledigt && q.knoten.levelId < aktivesLevelId;
+    });
+    return offene?.knoten ?? null;
+  }, [layout, hausaufgaben, aktivesLevelId]);
+
+  const oeffneKnoten = useCallback((knoten: KartenKnoten) => {
+    if (knoten.typ === "lektion") {
+      const lektion = lektionById(knoten.lektionId ?? "");
+      if (lektion) setAnsicht({ typ: "lektion", lektion });
+    } else if (knoten.typ === "boss") {
+      const level = levels.find((l) => l.id === knoten.levelId);
+      if (level) setAnsicht({ typ: "boss", level });
+    } else if (knoten.aufgabeId !== undefined) {
+      setAnsicht({ typ: "hausaufgabe", aufgabeId: knoten.aufgabeId });
+    }
+  }, []);
+
   if (!konto) return null;
 
   if (ansicht.typ === "lektion") {
@@ -183,6 +221,8 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
       <LektionAnsicht
         lektion={ansicht.lektion}
         zurueck={() => {
+          // Zurück zur Karte: die Kamera startet wieder beim aktuellen
+          // Fortschritt (die Karte wird neu aufgebaut).
           setAnsicht({ typ: "pfad" });
           neuLaden();
         }}
@@ -223,136 +263,43 @@ export default function PfadSeite({ sprungLektionId, sprungVerbraucht }: Props =
     return <p className="text-center text-slate-500">Lade Pfad …</p>;
   }
 
-  // Hausaufgaben hängen als Abzweigung (Side-Quest) am aktiven Level –
-  // optional, der Hauptpfad läuft daran vorbei.
-  const aktivesLevelId =
-    levels.find((l) => levelStatus.get(l.id) === "offen")?.id ??
-    levels[levels.length - 1]?.id;
-
-  const sideQuest = (meine: MeineAufgabe) => (
-    <div key={meine.aufgabe.id} className="relative ml-10 flex items-center gap-3">
-      <div aria-hidden="true" className="h-0.5 w-6 bg-slate-300" />
-      <button
-        type="button"
-        onClick={() => setAnsicht({ typ: "hausaufgabe", aufgabeId: meine.aufgabe.id })}
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 text-lg transition-transform hover:scale-105 ${
-          meine.erledigt
-            ? "border-green-600 bg-green-100"
-            : "border-dashed border-blue-400 bg-blue-50"
-        }`}
-        aria-label={`Side-Quest: ${meine.aufgabe.thema}`}
-      >
-        {meine.erledigt ? "✓" : "📌"}
-      </button>
-      <div>
-        <p className="text-sm font-medium text-slate-800">
-          Side-Quest: {meine.aufgabe.thema}
-        </p>
-        <p className="text-xs text-slate-500">
-          Hausaufgabe von {meine.aufgabe.zugewiesenVon} · {meine.fortschritt}/
-          {meine.gesamt}
-          {meine.aufgabe.deadline &&
-            ` · bis ${new Date(meine.aufgabe.deadline).toLocaleDateString("de-DE")}`}{" "}
-          · optional
-        </p>
-      </div>
-    </div>
-  );
-
-  // Nächste Maskottchen-Evolution (alle 5 Level) als Ausblick am Pfadende.
+  // Nächste Maskottchen-Evolution (alle 5 Level) als Ausblick unter der Karte.
   const naechsteEvolutionsStufe = Math.floor((aktivesLevelId - 1) / 5) + 1;
   const naechstesTier =
     MASKOTTCHEN_EVOLUTION[Math.min(naechsteEvolutionsStufe, MASKOTTCHEN_EVOLUTION.length - 1)];
   const evolutionSteht = naechsteEvolutionsStufe < MASKOTTCHEN_EVOLUTION.length;
 
   return (
-    <div className="flex flex-col gap-6 rounded-3xl bg-gradient-to-b from-sky-50 via-emerald-50/60 to-amber-50 p-4">
+    <div className="flex flex-col gap-4">
       <div className="text-center">
-        <p className="text-2xl leading-none">🌊 🌴 ☀️ 🌴 🌊</p>
-        <h2 className="mt-1 font-semibold text-slate-800">Deine Reise durch Sri Lanka</h2>
+        <h2 className="font-semibold text-slate-800">Deine Reise durch Sri Lanka</h2>
         <p className="text-xs text-slate-500">
-          Lerne dich Level für Level durch die Insel – dein Begleiter läuft mit.
+          Dein Begleiter ({maskottchenFuerLevel(aktivesLevelId)}) läuft den Weg mit dir –
+          zoome hinein, um die Lektionen zwischen den Leveln zu sehen.
         </p>
       </div>
 
-      {levels.map((level) => {
-        const status = levelStatus.get(level.id) ?? "gesperrt";
-        return (
-          <section
-            key={level.id}
-            className={`rounded-2xl border p-5 ${
-              status === "gesperrt"
-                ? "border-slate-200 bg-slate-50/80"
-                : "border-emerald-200 bg-white/90"
-            }`}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2
-                className={`font-semibold ${
-                  status === "gesperrt" ? "text-slate-400" : "text-slate-900"
-                }`}
-              >
-                <span className="mr-1.5">{szeneFuerLevel(level.id)}</span>
-                Level {level.id}: {level.name}
-              </h2>
-              {status === "fertig" ? (
-                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-                  Bestanden 🏆
-                </span>
-              ) : (
-                level.id === aktivesLevelId && (
-                  <Maskottchen levelId={aktivesLevelId} beschriftung />
-                )
-              )}
-            </div>
-
-            <div className="relative flex flex-col gap-5 pl-2">
-              {/* Verbindungslinie des Pfads */}
-              <div
-                aria-hidden="true"
-                className="absolute bottom-8 left-10 top-8 w-1 rounded bg-slate-200"
-              />
-              {level.lektionIds.map((lektionId, i) => {
-                const lektion = lektionById(lektionId);
-                if (!lektion) return null;
-                return (
-                  <div key={lektionId} className="relative">
-                    <KnotenKreis
-                      status={lektionStatus.get(lektionId) ?? "gesperrt"}
-                      inhalt={String(i + 1)}
-                      beschriftung={lektion.name}
-                      onClick={() => setAnsicht({ typ: "lektion", lektion })}
-                    />
-                  </div>
-                );
-              })}
-              <div className="relative">
-                <KnotenKreis
-                  status={bossStatus.get(level.id) ?? "gesperrt"}
-                  inhalt="🏆"
-                  beschriftung={`Boss-Test: ${level.name}`}
-                  onClick={() => setAnsicht({ typ: "boss", level })}
-                  boss
-                />
-              </div>
-              {level.id === aktivesLevelId && hausaufgaben.map(sideQuest)}
-            </div>
-          </section>
-        );
-      })}
+      <PfadKarte
+        layout={layout}
+        statusFuer={statusFuer}
+        avatarEmoji={maskottchenEmoji(aktivesLevelId)}
+        startKnotenId={startKnoten?.id ?? ""}
+        onKnoten={oeffneKnoten}
+        hinweisQuest={hinweisQuest}
+      />
 
       {evolutionSteht && (
-        <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50/80 p-4 text-center">
-          <p className="text-2xl">✨</p>
+        <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50/80 p-3 text-center">
           <p className="text-sm font-medium text-amber-800">
-            In Level {naechsteEvolutionsStufe * 5 + 1} entwickelt sich dein
+            ✨ In Level {naechsteEvolutionsStufe * 5 + 1} entwickelt sich dein
             Begleiter zum {naechstesTier} weiter!
           </p>
         </div>
       )}
 
       <p className="text-center text-xs text-slate-400">
-        🌴 Weitere Level (Uyirmei-Kombinationen) folgen – der Pfad wächst mit.
+        🌴 Weitere Level (Uyirmei-Kombinationen) folgen – die Karte wächst
+        automatisch mit.
       </p>
     </div>
   );
