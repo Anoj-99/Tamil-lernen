@@ -1,17 +1,12 @@
-// Layout der Sri-Lanka-Spielkarte: berechnet aus den Level-Daten
-// (levelPlan.ts) die Positionen aller Weg-Knoten, der Dekoration und der
-// Side-Quest-Abzweigungen. Rein und ohne Seiteneffekte – die Karte wächst
-// automatisch mit, sobald neue Level in levelPlan.ts definiert werden;
-// feste Positionen gibt es bewusst nicht.
+// EBENE 3: Gameplay. Ankert Level-, Lektions- und Side-Quest-Knoten per
+// Bogenlänge an den Weg (Ebene 2), der wiederum der Welt (Ebene 0)
+// folgt. Alles wird aus den Daten generiert (levelPlan.ts +
+// Hausaufgaben) – feste Koordinaten gibt es nicht, neue Level
+// verlängern Weg und Welt automatisch.
 import { Level } from "../../data/levelPlan";
-
-export const KARTE_BREITE = 1000;
-const MITTE = KARTE_BREITE / 2;
-const AMPLITUDE = 250; // wie weit sich der Weg nach links/rechts schlängelt
-const RAND_OBEN = 190;
-const SCHRITT_LEKTION = 135; // Abstand zwischen Lektions-Steinen
-const SCHRITT_BOSS = 185; // Abstand vor/nach einem Level-Stein
-const RAND_UNTEN = 240;
+import { erzeugeZufall, KARTE, KNOTEN, WELT } from "./kartenKonfig";
+import { erzeugeWeg, Weg } from "./wegGenerator";
+import { erzeugeWelt, Welt } from "./weltGenerator";
 
 export type KnotenTyp = "lektion" | "boss" | "quest";
 
@@ -20,18 +15,11 @@ export interface KartenKnoten {
   typ: KnotenTyp;
   x: number;
   y: number;
+  bogenlaenge: number; // Position auf dem Weg (Quests: ihr Abzweigpunkt)
   levelId: number;
   lektionId?: string;
   aufgabeId?: number;
   name: string;
-}
-
-export interface DekoElement {
-  x: number;
-  y: number;
-  symbol: string;
-  skala: number;
-  spiegeln: boolean;
 }
 
 export interface QuestPfad {
@@ -46,139 +34,119 @@ export interface QuestEingabe {
 }
 
 export interface KartenLayout {
+  welt: Welt; // Ebene 0 – Merkmale, Biome, Atmosphäre
+  weg: Weg; // Ebene 2 – für Wegbett, Landschaft und Avatar-Lauf
   knoten: KartenKnoten[]; // alle anklickbaren Knoten (inkl. Quests)
   hauptpfad: KartenKnoten[]; // Lektions- und Boss-Knoten in Weg-Reihenfolge
   questPfade: QuestPfad[];
-  deko: DekoElement[];
+  // Kamera-Grenze: bis kurz hinter den letzten Knoten scrollbar …
   hoehe: number;
+  // … die Welt selbst ist höher (Überhang) – sie hat kein sichtbares Ende.
+  weltHoehe: number;
 }
 
-// Deterministischer Pseudo-Zufall, damit die Landschaft bei jedem Rendern
-// gleich aussieht (kein echtes Math.random im Layout).
-function zufall(saat: number): number {
-  const x = Math.sin(saat * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
+// Abstand mit ±Jitter – bewusst keine gleichmäßigen Knoten-Abstände.
+function mitJitter(basis: number, zufall: () => number): number {
+  return basis * (1 + (zufall() * 2 - 1) * KNOTEN.abstandJitter);
 }
-
-// Der Weg schlängelt sich als Sinus-Kurve durch die Landschaft.
-function wegX(index: number): number {
-  return MITTE + AMPLITUDE * Math.sin(index * 0.72 + 0.4);
-}
-
-const DEKO_SYMBOLE = [
-  "palme",
-  "tempel",
-  "elefant",
-  "affe",
-  "wasserfall",
-  "busch",
-  "blume",
-  "fels",
-  "vogel",
-];
 
 export function baueKartenLayout(
   levels: Level[],
   lektionsName: (lektionId: string) => string,
   quests: QuestEingabe[] = [],
 ): KartenLayout {
-  const hauptpfad: KartenKnoten[] = [];
-  let y = RAND_OBEN;
-  let index = 0;
+  const zufall = erzeugeZufall(KARTE.seed);
 
+  // 1. Bogenlängen aller Knoten bestimmen (Weg-unabhängig).
+  interface Anker {
+    id: string;
+    typ: "lektion" | "boss";
+    bogenlaenge: number;
+    levelId: number;
+    lektionId?: string;
+    name: string;
+  }
+  const anker: Anker[] = [];
+  let l = KNOTEN.startBogenlaenge;
   for (const level of levels) {
     for (const lektionId of level.lektionIds) {
-      hauptpfad.push({
+      anker.push({
         id: `lektion:${lektionId}`,
         typ: "lektion",
-        x: wegX(index),
-        y,
+        bogenlaenge: l,
         levelId: level.id,
         lektionId,
         name: lektionsName(lektionId),
       });
-      index++;
-      y += SCHRITT_LEKTION;
+      l += mitJitter(KNOTEN.lektionAbstand, zufall);
     }
-    y += SCHRITT_BOSS - SCHRITT_LEKTION;
-    hauptpfad.push({
+    l += mitJitter(KNOTEN.bossAbstand - KNOTEN.lektionAbstand, zufall);
+    anker.push({
       id: `boss:${level.id}`,
       typ: "boss",
-      x: wegX(index),
-      y,
+      bogenlaenge: l,
       levelId: level.id,
       name: `Level ${level.id}: ${level.name}`,
     });
-    index++;
-    y += SCHRITT_BOSS;
+    l += mitJitter(KNOTEN.bossAbstand, zufall);
   }
 
-  // Side-Quests zweigen hinter dem Boss-Stein ihres Levels ab. Die Seite
-  // ergibt sich aus der Weg-Krümmung (Richtung Karteninneres), dadurch
-  // liegen sie mal links, mal rechts – nie starr auf einer Seite.
+  // 2. Welt (Ebene 0) und Weg (Ebene 2) erzeugen – beide mit Überhang
+  // hinter dem letzten Level, damit die Reise nie sichtbar endet –
+  // und die Knoten per Bogenlänge daran ankern.
+  const gesamtLaenge = l + WELT.ueberhang;
+  const welt = erzeugeWelt(gesamtLaenge, KARTE.seed);
+  const weg = erzeugeWeg(gesamtLaenge, zufall, welt);
+  const hauptpfad: KartenKnoten[] = anker.map((a) => {
+    const p = weg.positionBei(a.bogenlaenge);
+    return { ...a, x: p.x, y: p.y };
+  });
+
+  // 3. Side-Quests: zweigen hinter dem Boss-Stein ihres Levels ab. Die
+  // Seite ergibt sich aus der Weg-Tangente (senkrecht, Richtung
+  // Karteninneres) – dadurch mal links, mal rechts, nie starr.
   const questPfade: QuestPfad[] = [];
   for (const quest of quests) {
-    const anker =
+    const boss =
       hauptpfad.find((k) => k.typ === "boss" && k.levelId === quest.levelId) ??
       hauptpfad[hauptpfad.length - 1];
-    if (!anker) continue;
-    const seite = anker.x > MITTE ? -1 : 1;
-    const versatz = 0.6 + 0.3 * zufall(quest.aufgabeId);
+    if (!boss) continue;
+    const abzweigLaenge = boss.bogenlaenge + KNOTEN.questRadius * 2;
+    const von = weg.positionBei(abzweigLaenge);
+    const tangente = weg.tangenteBei(abzweigLaenge);
+    // Senkrechte zur Laufrichtung; von zwei Möglichkeiten die zur
+    // Kartenmitte zeigende wählen (bleibt sicher auf der Insel).
+    let nx = -tangente.y;
+    let ny = tangente.x;
+    if ((KARTE.breite / 2 - von.x) * nx < 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    const questZufall = erzeugeZufall(KARTE.seed + quest.aufgabeId);
+    const versatz =
+      KNOTEN.questVersatz + (questZufall() * 2 - 1) * KNOTEN.questVersatzJitter;
     questPfade.push({
-      von: { x: anker.x, y: anker.y },
+      von,
       knoten: {
         id: `quest:${quest.aufgabeId}`,
         typ: "quest",
-        x: anker.x + seite * 210 * versatz,
-        y: anker.y + 90 + 40 * zufall(quest.aufgabeId + 7),
-        levelId: anker.levelId,
+        x: von.x + nx * versatz,
+        y: von.y + ny * versatz,
+        bogenlaenge: abzweigLaenge,
+        levelId: boss.levelId,
         aufgabeId: quest.aufgabeId,
         name: quest.name,
       },
     });
   }
 
-  // Dekoration: pro Weg-Knoten 1–2 Elemente seitlich des Weges, per
-  // Saat-Zufall platziert – reine Atmosphäre ohne Spiellogik.
-  const deko: DekoElement[] = [];
-  hauptpfad.forEach((knoten, i) => {
-    const anzahl = 1 + Math.floor(zufall(i * 3 + 1) * 2);
-    for (let n = 0; n < anzahl; n++) {
-      const saat = i * 17 + n * 5;
-      const seite = zufall(saat) > 0.5 ? 1 : -1;
-      const abstand = 190 + zufall(saat + 1) * 190;
-      const x = Math.max(50, Math.min(KARTE_BREITE - 50, knoten.x + seite * abstand));
-      deko.push({
-        x,
-        y: knoten.y + (zufall(saat + 2) - 0.5) * 120,
-        symbol: DEKO_SYMBOLE[Math.floor(zufall(saat + 3) * DEKO_SYMBOLE.length)],
-        skala: 0.75 + zufall(saat + 4) * 0.6,
-        spiegeln: zufall(saat + 5) > 0.5,
-      });
-    }
-  });
-
   return {
+    welt,
+    weg,
     knoten: [...hauptpfad, ...questPfade.map((q) => q.knoten)],
     hauptpfad,
     questPfade,
-    deko,
-    hoehe: y + RAND_UNTEN,
+    hoehe: weg.positionBei(l).y + KARTE.randUnten,
+    weltHoehe: weg.positionBei(weg.gesamtLaenge).y,
   };
-}
-
-// Glatte SVG-Kurve durch die Weg-Punkte (quadratische Segmente durch die
-// Mittelpunkte – der klassische "smooth polyline"-Trick).
-export function wegKurve(punkte: { x: number; y: number }[]): string {
-  if (punkte.length === 0) return "";
-  if (punkte.length === 1) return `M ${punkte[0].x} ${punkte[0].y}`;
-  let d = `M ${punkte[0].x} ${punkte[0].y}`;
-  for (let i = 1; i < punkte.length - 1; i++) {
-    const mx = (punkte[i].x + punkte[i + 1].x) / 2;
-    const my = (punkte[i].y + punkte[i + 1].y) / 2;
-    d += ` Q ${punkte[i].x} ${punkte[i].y} ${mx} ${my}`;
-  }
-  const letzter = punkte[punkte.length - 1];
-  d += ` L ${letzter.x} ${letzter.y}`;
-  return d;
 }
