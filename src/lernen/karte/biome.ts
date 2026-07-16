@@ -20,6 +20,9 @@ export interface Biom {
     wasserHell: string; // Glanzfläche auf Wasser
     wegBett: string; // Erdreich unter den Wegplatten
     wegStein: string; // die Steinplatten des Wanderwegs
+    himmel: string;
+    bergeFern: string;
+    baumlinie: string;
   };
   symbole: BiomSymbol[]; // Füll-Vegetation (Merkmale kommen aus Ebene 0)
   dichteProTausend: number; // Füll-Deko pro 1000 Welt-px Weglänge
@@ -29,13 +32,16 @@ export const BIOME: Record<string, Biom> = {
   sriLanka: {
     id: "sriLanka",
     farben: {
-      grund: "#c3deae",
-      wiese: "#dcefc4",
-      kueste: "#eedfae",
-      wasser: "#a9d7e8",
-      wasserHell: "#d3ecf6",
-      wegBett: "#bfa478",
-      wegStein: "#ece0c4",
+      grund: "#879e6d",
+      wiese: "#b8c981",
+      kueste: "#d8c99a",
+      wasser: "#4f8789",
+      wasserHell: "#a9cbc2",
+      wegBett: "#8c704d",
+      wegStein: "#c9b99a",
+      himmel: "#c9d8c0",
+      bergeFern: "#7f927e",
+      baumlinie: "#657c62",
     },
     symbole: [
       { symbol: "palme", gewicht: 5 },
@@ -43,12 +49,8 @@ export const BIOME: Record<string, Biom> = {
       { symbol: "busch", gewicht: 4 },
       { symbol: "blume", gewicht: 3 },
       { symbol: "fels", gewicht: 2 },
-      { symbol: "elefant", gewicht: 1 },
-      { symbol: "makake", gewicht: 1 },
-      { symbol: "pfau", gewicht: 1 },
-      { symbol: "eisvogel", gewicht: 1 },
     ],
-    dichteProTausend: 13,
+    dichteProTausend: 21,
   },
 };
 

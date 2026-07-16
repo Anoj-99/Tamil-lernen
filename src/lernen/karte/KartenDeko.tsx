@@ -24,18 +24,17 @@ export default function KartenDeko() {
       </symbol>
 
       <symbol id="deko-baum" viewBox="-50 -90 100 100">
-        <path d="M -3 0 L -2 -34 M 2 0 L 1 -34" stroke="#8a5a33" strokeWidth="7" strokeLinecap="round" />
-        <circle cx="-14" cy="-46" r="17" fill="#3d9455" />
-        <circle cx="12" cy="-50" r="19" fill="#2e7c44" />
-        <circle cx="-2" cy="-62" r="16" fill="#4aa763" />
-        <circle cx="6" cy="-40" r="13" fill="#3d9455" />
+        <path d="M -4 0 Q -3 -25 -8 -42 M 3 0 Q 5 -28 13 -43" stroke="#65472f" strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M -43 -44 Q -39 -63 -22 -65 Q -19 -84 1 -79 Q 17 -90 28 -70 Q 46 -66 43 -47 Q 49 -32 30 -27 Q 13 -20 -1 -29 Q -17 -20 -31 -31 Q -47 -30 -43 -44 Z" fill="#285d3d" />
+        <path d="M -35 -51 Q -25 -68 -10 -61 Q -3 -78 12 -69 Q 27 -73 34 -57 Q 19 -60 12 -48 Q -4 -54 -13 -43 Q -25 -49 -35 -51 Z" fill="#4f7b43" />
+        <path d="M -28 -39 Q -12 -48 0 -39 Q 15 -51 31 -38 Q 17 -24 -1 -30 Q -16 -23 -28 -39 Z" fill="#356c42" />
+        <path d="M -23 -60 q 7 -6 15 -2 M 13 -61 q 7 -6 15 0" stroke="#7f9a55" strokeWidth="2" fill="none" opacity="0.65" />
       </symbol>
 
       <symbol id="deko-busch" viewBox="-50 -50 100 100">
-        <circle cx="-13" cy="-13" r="13" fill="#4aa763" />
-        <circle cx="9" cy="-16" r="15" fill="#2e7c44" />
-        <circle cx="21" cy="-8" r="10" fill="#3d9455" />
-        <circle cx="-2" cy="-8" r="11" fill="#3d9455" />
+        <path d="M -38 0 Q -44 -14 -29 -20 Q -26 -35 -9 -30 Q 2 -43 14 -28 Q 32 -31 34 -16 Q 45 -8 35 0 Z" fill="#2c6541" />
+        <path d="M -31 -7 Q -21 -21 -8 -13 Q 1 -28 14 -17 Q 24 -22 31 -9 Q 15 -12 8 -4 Q -8 -13 -17 -3 Z" fill="#56804a" />
+        <path d="M -24 -19 l 4 -3 M 5 -22 l 5 -4 M 22 -12 l 5 -1" stroke="#8ba05e" strokeWidth="2" strokeLinecap="round" />
       </symbol>
 
       <symbol id="deko-blume" viewBox="-50 -50 100 100">
@@ -61,21 +60,23 @@ export default function KartenDeko() {
       </symbol>
 
       <symbol id="deko-fels" viewBox="-50 -50 100 100">
-        <path d="M -26 0 L -19 -20 L 0 -28 L 21 -17 L 27 0 Z" fill="#b3ab9c" />
-        <path d="M -9 0 L -4 -24 L 10 -16 L 12 0 Z" fill="#9d9384" />
-        <path d="M -19 -6 L -12 -9" stroke="#8d8375" strokeWidth="2" strokeLinecap="round" />
+        <path d="M -30 0 L -25 -18 L -9 -35 L 13 -31 L 30 -15 L 35 0 Z" fill="#686b5d" />
+        <path d="M -25 -18 L -9 -35 L -2 -10 L -8 0 L -30 0 Z" fill="#8c8875" />
+        <path d="M -9 -35 L 13 -31 L 20 -15 L -2 -10 Z" fill="#aaa28a" />
+        <path d="M 20 -15 L 30 -15 L 35 0 L -8 0 L -2 -10 Z" fill="#777466" />
+        <path d="M -22 -3 q 8 -8 16 -1 M 12 -25 l 5 7" stroke="#516246" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
       </symbol>
 
       <symbol id="deko-tempel" viewBox="-50 -95 100 100">
-        <rect x="-36" y="-28" width="72" height="28" rx="2" fill="#e3cf9d" />
-        <rect x="-36" y="-30" width="72" height="5" fill="#cdb379" />
-        <rect x="-25" y="-52" width="50" height="24" rx="2" fill="#d8bf85" />
-        <rect x="-14" y="-72" width="28" height="20" rx="2" fill="#cdb379" />
-        <path d="M 0 -92 L 9 -72 L -9 -72 Z" fill="#c2a666" />
-        <circle cx="0" cy="-89" r="3.5" fill="#d9942b" />
-        <rect x="-6" y="-18" width="12" height="18" rx="5" fill="#7a4c28" />
-        <rect x="-28" y="-22" width="7" height="10" rx="3" fill="#c2a666" />
-        <rect x="21" y="-22" width="7" height="10" rx="3" fill="#c2a666" />
+        <path d="M -42 0 L -38 -10 L 38 -10 L 44 0 Z" fill="#8b795f" />
+        <rect x="-36" y="-34" width="72" height="25" rx="2" fill="#c9ab77" />
+        <path d="M -41 -34 L -29 -45 L 29 -45 L 41 -34 Z" fill="#8f5136" />
+        <path d="M -32 -47 L -23 -57 L 23 -57 L 32 -47 Z" fill="#b46b3e" />
+        <path d="M -19 -57 L -13 -68 L 13 -68 L 19 -57 Z" fill="#d18a4c" />
+        <path d="M -10 -68 L -6 -78 L 6 -78 L 10 -68 Z M -4 -78 L 0 -91 L 4 -78 Z" fill="#e0a75d" />
+        <g fill="#75523a"><rect x="-7" y="-26" width="14" height="17" rx="5" /><rect x="-28" y="-28" width="5" height="19" /><rect x="23" y="-28" width="5" height="19" /></g>
+        <path d="M -33 -42 H 33 M -26 -54 H 26 M -14 -65 H 14" stroke="#e8c58b" strokeWidth="2" />
+        <path d="M -20 -40 v 7 M -9 -40 v 7 M 9 -40 v 7 M 20 -40 v 7" stroke="#633f2e" strokeWidth="2" />
       </symbol>
 
       <symbol id="deko-haus" viewBox="-50 -70 100 100">
@@ -88,10 +89,11 @@ export default function KartenDeko() {
       </symbol>
 
       <symbol id="deko-berg" viewBox="-50 -85 100 100">
-        <path d="M -44 0 L -10 -70 L 12 -32 L 22 -48 L 46 0 Z" fill="#97a091" />
-        <path d="M -10 -70 L 0 -50 L -7 -47 L -18 -54 Z" fill="#eef2ec" />
-        <path d="M 22 -48 L 30 -31 L 17 -33 Z" fill="#eef2ec" />
-        <path d="M -30 -18 Q -24 -24 -18 -18" stroke="#87907f" strokeWidth="2.5" fill="none" />
+        <path d="M -50 0 L -45 -18 L -30 -33 L -15 -72 L 2 -45 L 16 -62 L 31 -29 L 48 0 Z" fill="#596b58" />
+        <path d="M -15 -72 L 2 -45 L -5 -22 L -28 -18 Z" fill="#7d8670" />
+        <path d="M 16 -62 L 31 -29 L 18 -18 L 5 -29 Z" fill="#87907b" />
+        <path d="M -50 0 Q -34 -22 -18 -10 Q -3 -29 10 -9 Q 29 -22 48 0 Z" fill="#315f40" />
+        <path d="M -37 -4 q 8 -10 18 -3 M 13 -7 q 9 -11 20 -2" stroke="#71834d" strokeWidth="3" fill="none" />
       </symbol>
 
       <symbol id="deko-wasserfall" viewBox="-50 -80 100 100">
@@ -113,12 +115,13 @@ export default function KartenDeko() {
       </symbol>
 
       <symbol id="deko-reisfeld" viewBox="-50 -60 100 100">
-        <g stroke="#8fbf6d" strokeWidth="2" fill="#b5d98a">
-          <path d="M -40 -8 Q 0 -16 40 -8 L 36 0 Q 0 -8 -36 0 Z" />
-          <path d="M -34 -22 Q 0 -30 34 -22 L 31 -13 Q 0 -21 -31 -13 Z" />
-          <path d="M -27 -36 Q 0 -43 27 -36 L 25 -27 Q 0 -34 -25 -27 Z" />
+        <g stroke="#617a48" strokeWidth="2" fill="#91a95f">
+          <path d="M -46 -6 Q 0 -20 46 -7 L 39 3 Q 0 -10 -41 3 Z" />
+          <path d="M -39 -23 Q 0 -36 39 -24 L 34 -13 Q 0 -25 -35 -12 Z" />
+          <path d="M -31 -39 Q 0 -49 31 -39 L 27 -29 Q 0 -39 -28 -28 Z" />
         </g>
-        <path d="M -20 -5 L -20 -9 M 0 -8 L 0 -12 M 20 -5 L 20 -9" stroke="#5c9e46" strokeWidth="2" strokeLinecap="round" />
+        <path d="M -38 -3 Q 0 -15 39 -5 M -31 -18 Q 0 -30 32 -20 M -23 -34 Q 0 -42 24 -35" stroke="#d1c982" strokeWidth="2" fill="none" opacity="0.7" />
+        <path d="M -25 -2 l -2 -10 M -9 -6 l -1 -11 M 9 -5 l 2 -10 M 27 -2 l 2 -9" stroke="#486b3c" strokeWidth="2" strokeLinecap="round" />
       </symbol>
 
       <symbol id="deko-elefant" viewBox="-50 -70 100 100">

@@ -35,10 +35,20 @@ export interface FlussDarstellung {
   schwung: number; // leichte Biegung des Flusslaufs
 }
 
+export interface BodenFleck {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+  drehung: number;
+  hell: boolean;
+}
+
 export interface LandschaftsDaten {
   deko: DekoElement[];
   wiesen: Wiese[];
   fluesse: FlussDarstellung[];
+  boden: BodenFleck[];
 }
 
 // Nähe zum nächsten Welt-Merkmal (0 = weit weg, 1 = direkt daneben).
@@ -64,6 +74,7 @@ export function baueLandschaft(weg: Weg, welt: Welt): LandschaftsDaten {
   const deko: DekoElement[] = [];
   const wiesen: Wiese[] = [];
   const fluesse: FlussDarstellung[] = [];
+  const boden: BodenFleck[] = [];
 
   // 1. Welt-Merkmale an ihre Positionen setzen (Regeln, keine Level).
   for (const m of welt.merkmale) {
@@ -106,6 +117,42 @@ export function baueLandschaft(weg: Weg, welt: Welt): LandschaftsDaten {
     }
   }
 
+  // Pilotregion: grosse, lesbare Sri-Lanka-Landmarken. Sie gehoeren zur
+  // austauschbaren Landschaftsdarstellung, nicht zur Gameplay-Logik. Die
+  // Positionen sind Bogenlaengen und wachsen deshalb mit dem Weg mit.
+  const pilot = [
+    { l: 520, seite: -1 as const, abstand: 250, symbol: "tempel", skala: 1.8 },
+    { l: 880, seite: 1 as const, abstand: 255, symbol: "reisfeld", skala: 2.15 },
+    { l: 1040, seite: 1 as const, abstand: 130, symbol: "pfau", skala: 1.08 },
+    { l: 1280, seite: -1 as const, abstand: 280, symbol: "berg", skala: 2.2 },
+    { l: 1350, seite: -1 as const, abstand: 205, symbol: "wasserfall", skala: 1.45 },
+    { l: 1490, seite: -1 as const, abstand: 245, symbol: "makake", skala: 1.05 },
+    { l: 1760, seite: 1 as const, abstand: 250, symbol: "haus", skala: 1.55 },
+    { l: 2130, seite: -1 as const, abstand: 230, symbol: "elefant", skala: 1.25 },
+  ];
+  for (const p of pilot) {
+    if (p.l >= weg.gesamtLaenge) continue;
+    const pos = seitlich(weg, p.l, p.seite, p.abstand);
+    const x = Math.max(110, Math.min(KARTE.breite - 110, pos.x));
+    wiesen.push({ x, y: pos.y + 12, rx: 150 + p.skala * 32, ry: 72 + p.skala * 15 });
+    deko.push({ x, y: pos.y, symbol: p.symbol, skala: p.skala, spiegeln: p.seite < 0 });
+    // Vegetationssaum statt einzelner, gleichverteilter Objekte.
+    const istTier = p.symbol === "pfau" || p.symbol === "makake" || p.symbol === "elefant";
+    const saum = istTier ? 0 : p.symbol === "reisfeld" ? 3 : 5;
+    for (let n = 0; n < saum; n++) {
+      const symbol = n % 3 === 0 ? "palme" : n % 3 === 1 ? "baum" : "busch";
+      const versatzX = p.seite * (100 + n * 35) + (zufall() * 2 - 1) * 28;
+      const versatzY = 38 + (n % 2) * 72 + zufall() * 34;
+      deko.push({
+        x: Math.max(70, Math.min(KARTE.breite - 70, x + versatzX)),
+        y: pos.y + versatzY,
+        symbol,
+        skala: 1.05 + zufall() * 0.8,
+        spiegeln: zufall() > 0.5,
+      });
+    }
+  }
+
   // 2. Füll-Vegetation (Biom-gesteuert). Um Merkmale herum dünner –
   // so bleiben offene Flächen zwischen dichteren Bereichen.
   const biom = welt.biomBei(0);
@@ -122,13 +169,33 @@ export function baueLandschaft(weg: Weg, welt: Welt): LandschaftsDaten {
     const pos = seitlich(weg, l, seite, abstand);
     const rand = KARTE.kuesteBreite + 30;
     if (pos.x < rand || pos.x > KARTE.breite - rand) continue;
+    const symbol = waehleSymbol(biom, zufall());
+    const basisSkala = 1.08 + zufall() * 0.85;
     deko.push({
       x: pos.x,
       y: pos.y,
-      symbol: waehleSymbol(biom, zufall()),
-      skala: 0.9 + zufall() * 0.65,
+      symbol,
+      skala: basisSkala,
       spiegeln: zufall() > 0.5,
     });
+    // Kokospalmen erscheinen selten allein: kleine asymmetrische Gruppen
+    // sind ein staerkeres Sri-Lanka-Motiv und vermeiden Streuseloptik.
+    if (symbol === "palme" && zufall() > 0.3) {
+      const anzahl = 2 + Math.floor(zufall() * 3);
+      for (let p = 0; p < anzahl; p++) {
+        const x = pos.x + (zufall() * 2 - 1) * (38 + p * 15);
+        const y = pos.y + 18 + zufall() * 58;
+        if (x > rand && x < KARTE.breite - rand) {
+          deko.push({
+            x,
+            y,
+            symbol: "palme",
+            skala: basisSkala * (0.72 + zufall() * 0.28),
+            spiegeln: zufall() > 0.5,
+          });
+        }
+      }
+    }
   }
 
   // 3. Helle Wiesen-Flecken als ruhige, flache Farbinseln.
@@ -142,7 +209,21 @@ export function baueLandschaft(weg: Weg, welt: Welt): LandschaftsDaten {
     });
   }
 
-  return { deko, wiesen, fluesse };
+  // Kleine, lasierende Bodenvariationen: genug Struktur fuer eine
+  // illustrierte Lichtung, aber kein sichtbares Raster.
+  for (let l = 80; l < weg.gesamtLaenge; l += 90 + zufall() * 150) {
+    const pos = seitlich(weg, l, zufall() > 0.5 ? 1 : -1, 85 + zufall() * 330);
+    boden.push({
+      x: pos.x,
+      y: pos.y,
+      rx: 24 + zufall() * 66,
+      ry: 9 + zufall() * 25,
+      drehung: (zufall() * 2 - 1) * 24,
+      hell: zufall() > 0.45,
+    });
+  }
+
+  return { deko, wiesen, fluesse, boden };
 }
 
 function waehleSymbol(biom: Biom, wert: number): string {

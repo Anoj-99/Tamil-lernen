@@ -37,23 +37,23 @@ export const WEG = {
   segmentMax: 190,
   amplitude: 250, // maximale seitliche Auslenkung von der Kartenmitte
   richtungMax: 1.1, // maximale seitliche Steigung (dx/dy) des Walks
-  richtungWandel: 0.9, // wie stark die Richtung pro Segment streuen darf
+  richtungWandel: 1.04, // wie stark die Richtung pro Segment streuen darf
   zurMitteZug: 0.35, // Rückzug zur Mitte nahe der Auslenkungsgrenze
   glaettungSchritte: 14, // Catmull-Rom-Samples pro Segment
   // Geometrie des Steinwegs (organisch: variable Steine statt Muster;
   // Farben kommen aus dem Biom)
-  bettBreite: 42,
-  steinAbstandMin: 26,
-  steinAbstandMax: 46,
-  steinRadiusMin: 10,
-  steinRadiusMax: 16,
-  steinSeitJitter: 6, // seitliche Streuung der Steine im Wegbett
+  bettBreite: 68,
+  steinAbstandMin: 30,
+  steinAbstandMax: 54,
+  steinRadiusMin: 15,
+  steinRadiusMax: 24,
+  steinSeitJitter: 12, // seitliche Streuung der Steine im Wegbett
 } as const;
 
 export const KNOTEN = {
   startBogenlaenge: 60, // Abstand des ersten Knotens vom Weganfang
-  lektionAbstand: 150, // Basis-Bogenlänge zwischen Lektions-Steinen
-  bossAbstand: 210, // Basis-Bogenlänge vor/nach einem Level-Stein
+  lektionAbstand: 65, // drei Lektionssteine bleiben im Detail gemeinsam sichtbar
+  bossAbstand: 105, // kompakte Pilotregion: drei Level in der Übersicht
   abstandJitter: 0.18, // ±18 % Streuung – keine gleichmäßigen Abstände
   lektionRadius: 26,
   bossRadiusX: 52,
@@ -97,9 +97,9 @@ export const STATUS_FARBEN: Record<
   KnotenStatus,
   { fuellung: string; rand: string; text: string }
 > = {
-  fertig: { fuellung: "#34a24f", rand: "#1d7a35", text: "#ffffff" },
-  offen: { fuellung: "#f0c96a", rand: "#c99b3f", text: "#5b4514" },
-  gesperrt: { fuellung: "#c8c8c4", rand: "#a9a9a4", text: "#77776f" },
+  fertig: { fuellung: "#a8b88c", rand: "#617655", text: "#33472f" },
+  offen: { fuellung: "#d4bd83", rand: "#8c7048", text: "#51401f" },
+  gesperrt: { fuellung: "#aaa99f", rand: "#74776f", text: "#555851" },
 };
 
 // Deterministischer Pseudo-Zufallsgenerator (mulberry32). Gleicher Seed →

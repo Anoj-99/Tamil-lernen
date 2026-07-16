@@ -113,7 +113,7 @@ export default function PfadKarte({
   return (
     <div
       ref={rahmenRef}
-      className="relative h-[68vh] min-h-80 w-full touch-none select-none overflow-hidden rounded-3xl border border-emerald-200"
+      className="relative h-[82dvh] min-h-[620px] w-full touch-none select-none overflow-hidden rounded-[2rem] border border-emerald-900/20 md:h-[76vh]"
       style={{ background: biom.farben.wasser }}
       {...gesten.handler}
       // Browser können overflow-hidden-Container programmatisch scrollen
@@ -185,9 +185,9 @@ export default function PfadKarte({
           onClick={() =>
             kamera.kameraAuf(hinweisQuest.x, hinweisQuest.y, KAMERA.detailZoom)
           }
-          className="absolute right-3 top-3 rounded-full border border-blue-300 bg-white/95 px-3 py-1.5 text-xs font-medium text-blue-800 shadow hover:bg-blue-50"
+          className="karte-steinknopf absolute right-3 top-3 min-h-11 rounded-2xl px-4 py-2 text-xs font-semibold text-stone-800 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
         >
-          📌 Offene Hausaufgabe
+          Offene Hausaufgabe
         </button>
       )}
 
@@ -199,9 +199,13 @@ export default function PfadKarte({
           kamera.kameraAuf(pos.x, pos.y, kamera.passZoom);
         }}
         aria-label="Zur Übersicht"
-        className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white/95 text-xl shadow hover:bg-slate-50"
+        className="karte-steinknopf absolute bottom-3 right-3 flex h-12 w-12 items-center justify-center rounded-[45%_55%_48%_52%] shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
       >
-        🗺️
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="m3.5 5.5 5-2 7 2.5 5-2v14.5l-5 2-7-2.5-5 2z" strokeLinejoin="round" />
+          <path d="M8.5 3.5V18M15.5 6v14.5" />
+          <path d="M11 9.5c1.6-1.7 4.1-1.5 5.2.3 1.1 1.8.1 4.3-2.7 6.3-2.8-2-3.8-4.5-2.5-6.6Z" fill="currentColor" stroke="none" />
+        </svg>
       </button>
 
       <p className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-white/80 px-3 py-1 text-[11px] text-slate-500">

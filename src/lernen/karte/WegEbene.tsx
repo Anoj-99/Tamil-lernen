@@ -45,8 +45,9 @@ function WegEbene({ weg, biom, steine, schmuck, bereich }: Props) {
         strokeWidth={WEG.bettBreite}
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.55}
+        opacity={0.78}
       />
+      <path d={bettD} fill="none" stroke="#d1b488" strokeWidth={WEG.bettBreite - 18} strokeLinecap="round" strokeLinejoin="round" opacity={0.3} />
 
       {/* Unregelmäßige Steinplatten, teils bemoost */}
       {steine
@@ -55,11 +56,20 @@ function WegEbene({ weg, biom, steine, schmuck, bereich }: Props) {
           <g key={i} transform={`translate(${s.x} ${s.y}) rotate(${s.drehung.toFixed(1)})`}>
             <polygon
               points={polygonPunkte(s.form)}
+              fill="#806e55"
+              transform="translate(0 4)"
+              stroke="#675842"
+              strokeWidth="1.8"
+            />
+            <polygon
+              points={polygonPunkte(s.form)}
               fill={biom.farben.wegStein}
               stroke={biom.farben.wegBett}
-              strokeWidth="1"
+              strokeWidth="1.4"
             />
-            {s.moos && <circle cx={-2} cy={2} r={3.4} fill="#7fae6a" opacity={0.8} />}
+            <polyline points={polygonPunkte(s.form.slice(0, 3))} fill="none" stroke="#efe3c8" strokeWidth="1.7" opacity="0.52" />
+            <path d="M -7 3 q 6 -7 13 -2" fill="none" stroke="#8f8269" strokeWidth="1.2" opacity="0.55" />
+            {s.moos && <path d="M -9 4 q 6 -8 13 -3 q 4 1 7 6 q -10 -4 -20 -3 Z" fill="#667f4d" opacity={0.82} />}
           </g>
         ))}
 

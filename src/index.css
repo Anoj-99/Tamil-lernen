@@ -55,3 +55,32 @@
   transform-box: fill-box;
   transform-origin: center;
 }
+
+/* Pilotregion: ruhige Weltbewegung und organische Kartensteuerung. */
+@keyframes karte-wind {
+  0%, 100% { transform: rotate(-0.7deg); }
+  50% { transform: rotate(0.8deg); }
+}
+.karte-wind {
+  animation: karte-wind 5.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+.karte-steinknopf {
+  color: #534632;
+  border: 1px solid #9c8968;
+  background: #e3d8bf;
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 45%), 0 5px 14px rgb(51 43 31 / 22%);
+  transition: transform 220ms ease, background-color 220ms ease, box-shadow 220ms ease;
+}
+.karte-steinknopf:hover { background: #eee5d2; transform: translateY(-1px); }
+.karte-steinknopf:active { transform: translateY(1px) scale(0.98); }
+
+@media (prefers-reduced-motion: reduce) {
+  .karte-wind,
+  .karte-avatar-bob,
+  .stein-puls,
+  .maskottchen-idle,
+  .maskottchen-jubel { animation: none !important; }
+  .karte-steinknopf { transition: none; }
+}

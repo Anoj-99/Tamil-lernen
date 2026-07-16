@@ -24,6 +24,21 @@ const LEKTION_FORMEN = [
   "M -22 -4 Q -18 -16 -2 -18 Q 14 -19 21 -10 Q 25 -1 20 8 Q 13 15 -3 14 Q -18 13 -22 4 Z",
 ];
 
+function StatusZeichen({ x, y, status }: { x: number; y: number; status: KnotenStatus }) {
+  if (status === "gesperrt") {
+    return (
+      <g transform={`translate(${x} ${y})`} fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round">
+        <rect x="-9" y="-3" width="18" height="15" rx="3" />
+        <path d="M -6 -3 V -8 A 6 6 0 0 1 6 -8 V -3" />
+      </g>
+    );
+  }
+  if (status === "fertig") {
+    return <path d={`M ${x - 9} ${y} l 6 6 13 -15`} fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />;
+  }
+  return null;
+}
+
 interface Props {
   layout: KartenLayout;
   biom: Biom;
@@ -75,9 +90,13 @@ function GameplayEbene({ layout, biom, statusFuer, detailFaktor, bereich, onTipp
                     strokeWidth={4}
                     strokeDasharray={status === "fertig" ? undefined : "6 6"}
                   />
-                  <text x={q.knoten.x} y={q.knoten.y + 8} textAnchor="middle" fontSize="22">
-                    {status === "fertig" ? "✓" : "📌"}
-                  </text>
+                  {status === "fertig" ? (
+                    <StatusZeichen x={q.knoten.x} y={q.knoten.y} status={status} />
+                  ) : (
+                    <g transform={`translate(${q.knoten.x} ${q.knoten.y})`} fill="none" stroke="#315f75" strokeWidth="3" strokeLinecap="round">
+                      <path d="M 0 12 V -11 M -7 -9 H 9 L 5 -2 H -7 Z" />
+                    </g>
+                  )}
                   <text
                     x={q.knoten.x}
                     y={q.knoten.y + KNOTEN.questRadius + 24}
@@ -117,24 +136,15 @@ function GameplayEbene({ layout, biom, statusFuer, detailFaktor, bereich, onTipp
                   <path d={form} fill={farben.rand} transform="translate(0 3)" />
                   <path d={form} fill={farben.fuellung} />
                 </g>
-                <text
-                  x={k.x}
-                  y={k.y + 7}
-                  textAnchor="middle"
-                  fontSize="20"
-                  fontWeight="700"
-                  fill={farben.text}
-                >
-                  {status === "gesperrt" ? "🔒" : status === "fertig" ? "✓" : nummer}
-                </text>
-                <text
-                  x={k.x}
-                  y={k.y + KNOTEN.lektionRadius + 20}
-                  textAnchor="middle"
-                  fontSize="15"
-                  fill="#4b5563"
-                >
-                  {k.name}
+                <g color={farben.text}>
+                  {status === "offen" ? (
+                    <text x={k.x} y={k.y + 7} textAnchor="middle" fontSize="20" fontWeight="700" fill={farben.text}>{nummer}</text>
+                  ) : (
+                    <StatusZeichen x={k.x} y={k.y - 1} status={status} />
+                  )}
+                </g>
+                <text x={k.x} y={k.y + KNOTEN.lektionRadius + 19} textAnchor="middle" fontSize="13" fontWeight="650" fill="#4b4c3b">
+                  {k.lektionId}
                 </text>
               </g>
             );
@@ -179,7 +189,8 @@ function GameplayEbene({ layout, biom, statusFuer, detailFaktor, bereich, onTipp
               >
                 <g className={status === "offen" ? "stein-puls" : undefined}>
                   <g transform={`translate(${k.x} ${k.y}) scale(${basisSkala})`}>
-                    <path d={form} fill={farben.rand} transform="translate(0 9)" />
+                    <path d={form} fill="#5f5a4c" transform="translate(0 12)" opacity="0.72" />
+                    <path d={form} fill={farben.rand} transform="translate(0 7)" />
                     <path d={form} fill={farben.fuellung} />
                     <path
                       d="M -26 -16 Q -8 -24 14 -18"
@@ -189,21 +200,28 @@ function GameplayEbene({ layout, biom, statusFuer, detailFaktor, bereich, onTipp
                       fill="none"
                       opacity={0.3}
                     />
+                    <path d="M -29 8 Q -14 19 4 15 T 28 6" fill="none" stroke={farben.rand} strokeWidth="3" opacity="0.42" />
+                    <path d="M 16 -17 l 8 8 l -5 8" fill="none" stroke={farben.rand} strokeWidth="2.3" opacity="0.5" />
                   </g>
-                  <text x={k.x} y={k.y + 12} textAnchor="middle" fontSize="34">
-                    {status === "gesperrt" ? "🔒" : status === "fertig" ? "🏆" : "⚔️"}
-                  </text>
+                  <g color={farben.text}>
+                    {status === "offen" ? (
+                      <text x={k.x} y={k.y + 11} textAnchor="middle" fontSize="31" fontWeight="750" fill={farben.text}>{k.levelId}</text>
+                    ) : (
+                      <StatusZeichen x={k.x} y={k.y - 1} status={status} />
+                    )}
+                  </g>
                 </g>
               </g>
               <text
                 x={k.x}
                 y={k.y + KNOTEN.bossRadiusY * wachstum + 30}
                 textAnchor="middle"
-                fontSize="19"
-                fontWeight="600"
+                fontSize="15"
+                fontWeight="650"
                 fill={status === "gesperrt" ? "#9ca3af" : "#374151"}
+                opacity={detailFaktor}
               >
-                {k.name}
+                Level {k.levelId}
               </text>
             </g>
           );
